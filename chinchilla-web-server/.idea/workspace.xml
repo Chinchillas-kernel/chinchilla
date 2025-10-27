@@ -4,7 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b1aaad34-0b92-412b-b8d6-f42f7d3ee8ce" name="변경" comment="" />
+    <list default="true" id="b1aaad34-0b92-412b-b8d6-f42f7d3ee8ce" name="변경" comment="">
+      <change beforePath="$PROJECT_DIR$/../build.gradle" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../python_service/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../spring-web/main/java/com.chinchilla/ChinchillaApllication.java" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -179,7 +185,7 @@
       <workItem from="1761533295718" duration="6000" />
       <workItem from="1761534301750" duration="2000" />
       <workItem from="1761534333364" duration="2000" />
-      <workItem from="1761534698448" duration="12000" />
+      <workItem from="1761534698448" duration="1646000" />
     </task>
     <servers />
   </component>
