@@ -2,6 +2,20 @@ spring:
   application:
     name: chinchilla-web
 
+  # Docker Compose 자동 관리
+  docker:
+    compose:
+      enabled: true
+      file: docker-compose.yml
+      lifecycle-management: start-and-stop
+      start:
+        command: up
+      stop:
+        command: stop
+      readiness:
+        wait: always
+        timeout: 5m
+
   # ??????
   datasource:
     url: jdbc:mysql://localhost:3307/chinchilla?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
