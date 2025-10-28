@@ -1,0 +1,28 @@
+# 디폴트 무시된 파일
+/shelf/
+/workspace.xml
+# 에디터 기반 HTTP 클라이언트 요청
+/httpRequests/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# Java/Spring Boot
+spring-web/target/
+spring-web/*.jar
+spring-web/.idea/
+spring-web/*.iml
+
+# Python
+python-rag/__pycache__/
+python-rag/**/__pycache__/
+python-rag/*.pyc
+python-rag/.venv/
+python-rag/venv/
+python-rag/.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
