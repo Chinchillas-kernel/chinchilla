@@ -52,16 +52,22 @@ class JobsRequest(BaseModel):
 # News Category Schemas (팀원이 추가할 예시)
 # ============================================================================
 
-# class NewsPayload(BaseModel):
-#     """Payload for news queries."""
-#     query: str
-#     date_from: Optional[str] = None
+
+class NewsPayload(BaseModel):
+    """Payload for news queries."""
+
+    query: str  # 필수: 사용자 질문 (예: "노인 복지 정책 뉴스")
+    category: Optional[str] = None  # 선택: 뉴스 카테고리 (복지, 건강, 여가 등)
+    date_from: Optional[str] = None  # 선택: 검색 시작 날짜 (YYYY-MM-DD)
+    date_to: Optional[str] = None  # 선택: 검색 종료 날짜 (YYYY-MM-DD)
 
 
-# class NewsRequest(BaseModel):
-#     """News category request."""
-#     category: Literal["news"]
-#     payload: NewsPayload
+class NewsRequest(BaseModel):
+    """News category request."""
+
+    category: Literal["news"]
+    payload: NewsPayload
+
 
 # ============================================================================
 # Legal Category Schemas (노인 법률 상담)
@@ -123,6 +129,7 @@ class LegalRequest(BaseModel):
 # Discriminated Union (카테고리 추가 시 여기에 등록)
 # ============================================================================
 
+
 class WelfarePayload(BaseModel):
     """Payload for welfare category queries."""
 
@@ -146,8 +153,8 @@ class WelfareRequest(BaseModel):
 
 AgentRequest = Union[
     JobsRequest,
-    WelfareRequest,
-    # NewsRequest,     # 팀원이 추가
+    WelfareRequest,  # 팀원이 추가
+    NewsRequest,
     LegalRequest,
 ]
 
@@ -177,4 +184,6 @@ __all__ = [
     "LegalProfile",
     "LegalPayload",
     "LegalRequest",
+    "NewsPayload",
+    "NewsRequest",
 ]
