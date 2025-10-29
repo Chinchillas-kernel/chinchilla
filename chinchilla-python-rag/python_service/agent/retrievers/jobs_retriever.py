@@ -130,20 +130,23 @@ def _filter_by_age(docs: Iterable[Document], age: Optional[int]) -> List[Documen
 @dataclass
 class JobsRetrievalInput:
     query: str
-    profile: JobsProfile
+    profile: Optional[JobsProfile] = None
 
 
 @dataclass
 class JobsRetrievalResult:
     query: str
-    profile: JobsProfile
+    profile: Optional[JobsProfile] = None
     filters: Optional[Dict[str, Any]] = None
     documents: List[Document] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "query": self.query,
-            "profile": self.profile.model_dump() if hasattr(self.profile, "model_dump") else self.profile,
+            "profile": (
+                self.profile.model_dump() if self.profile and hasattr(self.profile, "model_dump")
+                else self.profile
+            ),
             "filters": self.filters,
             "documents": [
                 {"page_content": doc.page_content, "metadata": dict(doc.metadata)}
@@ -193,8 +196,19 @@ class JobsRetrieverPipeline:
             profile = payload.profile
         if not query:
             raise ValueError("query is required for jobs retrieval")
+
+        # Profile is now optional (for Level 3+ no-filter searches)
         if profile is None:
-            raise ValueError("profile is required for jobs retrieval")
+            # No profile: retrieve without any filters
+            raw_docs = self._retriever.retrieve(query, n_results=self.top_k, filters=None)
+            return JobsRetrievalResult(
+                query=query,
+                profile=None,
+                filters=None,
+                documents=raw_docs,
+            )
+
+        # Profile provided: apply filters
         normalized_profile = self._ensure_profile(profile)
         filters = _build_filters(normalized_profile)
         fetch_k = self.top_k * self.fetch_multiplier

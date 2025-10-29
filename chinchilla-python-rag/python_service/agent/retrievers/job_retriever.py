@@ -52,7 +52,9 @@ class ElderlyJobRetriever:
         self.collection_name = collection_name
 
         # Get API key
-        self.api_key = api_key or os.getenv("UPSTAGE_API_KEY")
+        self.api_key = (
+            api_key or settings.upstage_api_key or os.getenv("UPSTAGE_API_KEY")
+        )
         if not self.api_key:
             raise ValueError("UPSTAGE_API_KEY not provided or set in environment")
 
@@ -109,7 +111,11 @@ class ElderlyJobRetriever:
             results["distances"][0],
         ):
             # Add relevance score to metadata
-            metadata["relevance_score"] = 1 - distance
+            # ChromaDB cosine distance is in [0, 2] for normalized vectors
+            # distance = 0 → perfect match (score = 1.0)
+            # distance = 2 → opposite (score = 0.0)
+            # Convert to similarity score in [0, 1]
+            metadata["relevance_score"] = max(0.0, 1.0 - (distance / 2.0))
             metadata["doc_id"] = doc_id
 
             documents.append(Document(page_content=doc_text, metadata=metadata))

@@ -1,5 +1,6 @@
 """Runtime registry: category -> hooks & compiled graph cache."""
-from typing import Dict, Tuple
+
+from typing import Any, Dict, Tuple
 
 from agent.categories.base import CategoryHooks
 from agent.categories.jobs import JobsHooks
@@ -9,6 +10,7 @@ from agent.graph import build_graph
 # ============================================================================
 # Category Registry (팀원이 카테고리 추가 시 여기에 등록)
 # ============================================================================
+
 
 def get_all_hooks() -> Dict[str, CategoryHooks]:
     """Get all registered category hooks.
@@ -31,6 +33,7 @@ def get_all_hooks() -> Dict[str, CategoryHooks]:
 # ============================================================================
 # Runtime Initialization (서버 시작 시 1회 실행)
 # ============================================================================
+
 
 def get_runtime() -> Tuple[Dict[str, Any], Dict[str, CategoryHooks]]:
     """Initialize runtime: build graphs for all categories.
