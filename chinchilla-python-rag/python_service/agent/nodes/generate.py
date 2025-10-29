@@ -1,8 +1,6 @@
 """Generate node: final answer generation using LLM."""
 from typing import Callable, Dict, Any, List
-from langchain_upstage import ChatUpstage
 from langchain.schema import Document
-from app.config import settings
 
 
 def _format_documents(documents: List[Document]) -> str:
@@ -61,10 +59,8 @@ def make_generate_node(hooks: Any) -> Callable:
         context = _format_documents(all_docs)
 
         try:
-            llm = ChatUpstage(
-                api_key=settings.upstage_api_key,
-                model="solar-pro",
-            )
+            # Use cached LLM instance from hooks
+            llm = hooks.llm
 
             messages = [
                 {"role": "system", "content": system_prompt},
