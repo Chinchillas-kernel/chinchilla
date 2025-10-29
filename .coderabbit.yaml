@@ -1,0 +1,67 @@
+# CodeRabbit 설정 - Chinchilla 프로젝트
+
+# 언어: 한글
+language: ko
+
+# 리뷰 설정
+reviews:
+  # 자동 리뷰
+  auto_review:
+    enabled: true
+    drafts: false  # 드래프트 PR은 리뷰 안 함
+    base_branches:
+      - main
+      - dev
+      - develop
+      - feature/*
+  
+  # 리뷰 스타일
+  profile: chill  # chill: 친절하고 건설적
+  
+  # 상세 설정
+  high_level_summary: true  # 전체 요약
+  poem: false  # 시 작성 비활성화
+  review_status: true  # 상태 메시지 표시
+  collapse_walkthrough: false  # Walkthrough 접기 안 함
+  
+  # 변경 요청 워크플로우
+  request_changes_workflow: false
+  
+  # 리뷰할 파일 패턴
+  path_filters:
+    - "spring-web/**/*.java"
+    - "python-rag/**/*.py"
+    - "**/*.gradle"
+    - "**/*.yml"
+    - "**/*.yaml"
+    - "**/*.md"
+  
+  # 파일별 지침
+  path_instructions:
+    - path: "spring-web/**/*.java"
+      instructions: |
+        Java 21 및 Spring Boot 3.2 베스트 프랙티스 확인
+        보안 취약점 체크
+        노인 복지 서비스 관련 민감 정보 처리 확인
+    
+    - path: "python-rag/**/*.py"
+      instructions: |
+        Python 3.13 코딩 스타일 확인
+        RAG 파이프라인 로직 검토
+        Upstage API 사용 최적화 확인
+    
+    - path: "**/*.md"
+      instructions: "문서 가독성 및 정확성 확인"
+    
+    - path: "**/test/**"
+      instructions: "테스트 커버리지 및 엣지 케이스 확인"
+
+# 채팅 설정
+chat:
+  auto_reply: true  # 자동 응답
+
+# 얼리 액세스 (베타 기능)
+early_access: false
+
+# 무료 티어 활성화
+enable_free_tier: true
