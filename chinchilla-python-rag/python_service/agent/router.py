@@ -37,6 +37,7 @@ def dispatch(
         "category": category,
         "query": req.payload.query,
         "retry_count": 0,  # Initialize retry counter
+        "filter_level": 0,  # Initialize filter level
     }
 
     # Add profile if exists (for jobs category)
@@ -45,7 +46,9 @@ def dispatch(
 
     # Execute workflow
     try:
-        result = graph.invoke(state)
+        # Increase recursion limit for multi-level search strategy
+        # Max path: retry(3) * filter_levels(4) * nodes_per_level(4) = ~48 steps
+        result = graph.invoke(state, config={"recursion_limit": 50})
 
         return AgentResponse(
             answer=result.get("answer", ""),

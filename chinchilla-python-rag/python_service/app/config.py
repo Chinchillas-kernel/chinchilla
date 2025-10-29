@@ -29,6 +29,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("CHROMA_DIR", "chroma_dir"),
     )
 
+    data_raw_dir: str = Field(  # ← 누락돼 있던 필드
+        default="data/raw",
+        validation_alias=AliasChoices("DATA_RAW_DIR", "data_raw_dir"),
+    )
+
     # .env 로딩 설정
     model_config = SettingsConfigDict(
         env_file=".env",
