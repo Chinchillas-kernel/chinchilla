@@ -2,6 +2,7 @@
 from agent.nodes.precheck import make_precheck_node
 from agent.nodes.rewrite import make_rewrite_node
 from agent.nodes.retrieve import make_retrieve_node
+from agent.nodes.grade import make_grade_node
 from agent.nodes.gate import make_gate_node
 from agent.nodes.websearch import make_websearch_node
 from agent.nodes.merge import make_merge_node
@@ -13,6 +14,7 @@ __all__ = [
     "make_precheck_node",
     "make_rewrite_node",
     "make_retrieve_node",
+    "make_grade_node",
     "make_gate_node",
     "make_websearch_node",
     "make_merge_node",

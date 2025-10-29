@@ -39,7 +39,7 @@ def make_rewrite_node(hooks: Any) -> Callable:
 
             messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"È8: {query}\n\n€É ü¬:"},
+                {"role": "user", "content": f"ì§ˆë¬¸: {query}\n\nê²€ìƒ‰ ì¿¼ë¦¬:"},
             ]
 
             response = llm.invoke(messages)
