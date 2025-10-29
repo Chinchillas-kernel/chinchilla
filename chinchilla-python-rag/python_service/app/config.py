@@ -17,6 +17,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SERP_API_KEY", "serp_api_key"),
     )
 
+    # Naver API
+    naver_client_id: str = Field(
+        ..., validation_alias=AliasChoices("NAVER_CLIENT_ID", "naver_client_id")
+    )
+    naver_client_secret: str = Field(
+        ..., validation_alias=AliasChoices("NAVER_CLIENT_SECRET", "naver_client_secret")
+    )
+
     # 선택 항목
     langsmith_api_key: str | None = Field(
         default=None,
