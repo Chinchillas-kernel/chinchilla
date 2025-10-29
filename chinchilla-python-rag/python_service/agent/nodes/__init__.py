@@ -9,6 +9,10 @@ from agent.nodes.merge import make_merge_node
 from agent.nodes.plan import make_plan_node
 from agent.nodes.generate import make_generate_node
 from agent.nodes.safety import make_safety_node
+from agent.nodes.search_strategy import (
+    make_filter_widen_node,
+    make_enhanced_retrieve_node,
+)
 
 __all__ = [
     "make_precheck_node",
@@ -21,4 +25,6 @@ __all__ = [
     "make_plan_node",
     "make_generate_node",
     "make_safety_node",
+    "make_filter_widen_node",
+    "make_enhanced_retrieve_node",
 ]

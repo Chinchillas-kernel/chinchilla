@@ -1,7 +1,5 @@
 """Rewrite node: query optimization using LLM."""
 from typing import Callable, Dict, Any
-from langchain_upstage import ChatUpstage
-from app.config import settings
 
 
 def make_rewrite_node(hooks: Any) -> Callable:
@@ -32,10 +30,8 @@ def make_rewrite_node(hooks: Any) -> Callable:
         system_prompt = hooks.rewrite_system_prompt
 
         try:
-            llm = ChatUpstage(
-                api_key=settings.upstage_api_key,
-                model="solar-pro",
-            )
+            # Use cached LLM instance from hooks
+            llm = hooks.llm
 
             messages = [
                 {"role": "system", "content": system_prompt},

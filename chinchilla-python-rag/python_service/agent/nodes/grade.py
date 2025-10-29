@@ -1,7 +1,5 @@
 """Grade node: evaluate document relevance to query."""
 from typing import Callable, Dict, Any, Literal
-from langchain_upstage import ChatUpstage
-from app.config import settings
 
 
 def make_grade_node(hooks: Any) -> Callable:
@@ -11,17 +9,17 @@ def make_grade_node(hooks: Any) -> Callable:
         hooks: CategoryHooks instance
 
     Returns:
-        Node function: state -> routing decision ("yes" or "no")
+        Node function: state -> updated state with grade_decision
     """
 
-    def grade_node(state: Dict[str, Any]) -> Literal["yes", "no"]:
+    def grade_node(state: Dict[str, Any]) -> Dict[str, Any]:
         """Grade retrieved documents for relevance.
 
         Args:
             state: Agent state dict
 
         Returns:
-            "yes" if documents are relevant, "no" if need to rewrite query
+            Updated state with grade_decision ("yes" or "no")
         """
         query = state.get("query", "")
         rewritten_query = state.get("rewritten_query", query)
@@ -30,7 +28,7 @@ def make_grade_node(hooks: Any) -> Callable:
         # If no documents, definitely need to rewrite
         if not documents:
             print("[GRADE] No documents retrieved → rewrite")
-            return "no"
+            return {"grade_decision": "no"}
 
         # Check relevance scores first (if available)
         relevant_docs = [
@@ -41,7 +39,7 @@ def make_grade_node(hooks: Any) -> Callable:
 
         if not relevant_docs:
             print(f"[GRADE] No documents above threshold ({hooks.min_relevance_threshold}) → rewrite")
-            return "no"
+            return {"grade_decision": "no"}
 
         # Use LLM to grade relevance
         # Format documents for evaluation
@@ -62,10 +60,8 @@ def make_grade_node(hooks: Any) -> Callable:
 관련이 있으면 "yes", 없으면 "no"만 답변하세요."""
 
         try:
-            llm = ChatUpstage(
-                api_key=settings.upstage_api_key,
-                model="solar-pro",
-            )
+            # Use cached LLM instance from hooks
+            llm = hooks.llm
 
             messages = [
                 {
@@ -81,15 +77,15 @@ def make_grade_node(hooks: Any) -> Callable:
             # Parse decision
             if "yes" in decision:
                 print("[GRADE] Documents are relevant → generate")
-                return "yes"
+                return {"grade_decision": "yes"}
             else:
                 print("[GRADE] Documents not relevant → rewrite")
-                return "no"
+                return {"grade_decision": "no"}
 
         except Exception as e:
             print(f"[WARN] Grade failed: {e}, defaulting to yes")
             # If grading fails, proceed with documents we have
-            return "yes"
+            return {"grade_decision": "yes"}
 
     return grade_node
 
