@@ -36,6 +36,7 @@ def dispatch(
     state = {
         "category": category,
         "query": req.payload.query,
+        "retry_count": 0,  # Initialize retry counter
     }
 
     # Add profile if exists (for jobs category)
