@@ -1,4 +1,5 @@
 """Jobs category hooks."""
+
 from typing import Any
 from agent.categories.base import CategoryHooks
 from agent.retrievers.jobs_retriever import get_jobs_retriever
@@ -10,13 +11,13 @@ class JobsHooks(CategoryHooks):
     name: str = "jobs"
 
     rewrite_system_prompt: str = (
-        "” xx D© õà €É”Ğtä. ¬©X ÈX| €É \T ü¬\ •}X|. "
-        ": Àí(Ä/Ü/l), Á4 ¤ÌÜ, à©Ü ñ."
+        "â€ xx DÂ© ÃµÃ  â‚¬Ã‰â€ÃtÃ¤. Â¬Â©ÂX ÃˆX| â‚¬Ã‰ \T Ã¼Â¬\ â€¢}X|. "
+        ": Ã€Ã­(Ã„/Ãœ/l), Ã4 Â¤ÃŒÃœ, Ã Â©Ãœ Ã±."
     )
 
     answer_system_prompt: str = (
-        "” ÜÈ´ D© è$4¸ä. U\ üp 8@ hØ, "
-        "ÀĞ (/üX¬mD lp<\ õX|."
+        "â€ ÃœÃˆÂ´ DÂ© Ã¨$4Â¸Ã¤. U\ Ã¼p 8@ hÃ˜, "
+        "Ã€Ã (/Ã¼XÂ¬mD lp<\ ÃµX|."
     )
 
     top_k: int = 8
@@ -28,3 +29,4 @@ class JobsHooks(CategoryHooks):
 
 
 __all__ = ["JobsHooks"]
+
