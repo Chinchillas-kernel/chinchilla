@@ -21,7 +21,9 @@ from tqdm import tqdm
 try:
     from app.config import settings
 except Exception as exc:  # pragma: no cover
-    raise RuntimeError("Failed to import app.config.settings. Ensure PYTHONPATH is set.") from exc
+    raise RuntimeError(
+        "Failed to import app.config.settings. Ensure PYTHONPATH is set."
+    ) from exc
 
 
 @dataclass
@@ -215,7 +217,9 @@ def load_jobs(merged_csv: Path, limit: int = 0) -> List[JobRecord]:
             }
         )
 
-        job_records.append(JobRecord(job_id=job_id, text=document_text, metadata=metadata))
+        job_records.append(
+            JobRecord(job_id=job_id, text=document_text, metadata=metadata)
+        )
 
     return job_records
 
@@ -253,7 +257,9 @@ def chunk_jobs(
         for idx, chunk_text in enumerate(splits):
             chunk_id = f"{job.job_id}#{idx}"
             metadata = dict(job.metadata)
-            metadata.update({"job_id": job.job_id, "chunk_index": idx, "chunk_count": total_chunks})
+            metadata.update(
+                {"job_id": job.job_id, "chunk_index": idx, "chunk_count": total_chunks}
+            )
             chunk_records.append(
                 ChunkRecord(
                     chunk_id=chunk_id,
@@ -274,7 +280,9 @@ def embed_and_ingest(
 ) -> List[ChunkRecord]:
     api_key = os.getenv("UPSTAGE_API_KEY") or settings.upstage_api_key
     if not api_key:
-        raise RuntimeError("UPSTAGE_API_KEY not configured. Set environment variable or .env entry.")
+        raise RuntimeError(
+            "UPSTAGE_API_KEY not configured. Set environment variable or .env entry."
+        )
 
     client = chromadb.PersistentClient(
         path=str(db_path.absolute()),
@@ -289,7 +297,9 @@ def embed_and_ingest(
 
     collection = client.get_or_create_collection(name=collection_name)
 
-    embeddings_model = UpstageEmbeddings(api_key=api_key, model="solar-embedding-1-large")
+    embeddings_model = UpstageEmbeddings(
+        api_key=api_key, model="solar-embedding-1-large"
+    )
 
     updated_chunks: List[ChunkRecord] = []
     unique_job_ids = sorted({chunk.job_id for chunk in chunks})
@@ -299,7 +309,9 @@ def embed_and_ingest(
         except Exception:
             continue
 
-    for start in tqdm(range(0, len(chunks), batch_size), desc="Embedding", unit="batch"):
+    for start in tqdm(
+        range(0, len(chunks), batch_size), desc="Embedding", unit="batch"
+    ):
         batch = list(chunks[start : start + batch_size])
         texts = [item.text for item in batch]
         vectors = embeddings_model.embed_documents(texts)
@@ -341,7 +353,9 @@ def dump_chunks(path: Path, chunks: Sequence[ChunkRecord]) -> None:
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Chunk and embed Senuri job data into ChromaDB.")
+    parser = argparse.ArgumentParser(
+        description="Chunk and embed Senuri job data into ChromaDB."
+    )
     parser.add_argument(
         "--limit",
         type=int,
@@ -351,13 +365,13 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--chunk-size",
         type=int,
-        default=600,
+        default=450,
         help="Character length for each chunk",
     )
     parser.add_argument(
         "--chunk-overlap",
         type=int,
-        default=120,
+        default=30,
         help="Overlap size between chunks",
     )
     parser.add_argument(
