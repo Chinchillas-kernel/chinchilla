@@ -10,10 +10,14 @@ src/
 │   │   │   ├── AgentController.java      # 페이지 라우팅
 │   │   │   └── AgentRestController.java  # REST API
 │   │   ├── dto/
-│   │   │   ├── AgentRequest.java        # API 요청 DTO
-│   │   │   ├── AgentResponse.java       # API 응답 DTO
-│   │   │   ├── JobQueryPayload.java     # 일자리 매칭 페이로드
-│   │   │   └── UserProfile.java         # 사용자 프로필
+│   │   │   ├── AgentRequest.java        # 공통 요청 DTO
+│   │   │   ├── AgentResponse.java       # 공통 응답 DTO
+│   │   │   ├── JobsPayload.java         # jobs 카테고리 요청 페이로드
+│   │   │   ├── JobsProfile.java         # jobs 카테고리 프로필 정보
+│   │   │   ├── WelfarePayload.java      # welfare 카테고리 페이로드
+│   │   │   ├── NewsPayload.java         # news 카테고리 페이로드
+│   │   │   ├── LegalPayload.java        # legal 카테고리 페이로드
+│   │   │   └── LegalProfile.java        # legal 카테고리 프로필 정보
 │   │   ├── config/
 │   │   │   └── RestTemplateConfig.java  # RestTemplate 설정
 │   │   └── exception/
