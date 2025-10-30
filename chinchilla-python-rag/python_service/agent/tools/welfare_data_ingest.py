@@ -17,8 +17,9 @@ from chromadb.config import Settings
 from langchain.schema import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_upstage import UpstageDocumentParseLoader, UpstageEmbeddings
+from tqdm import tqdm
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -170,7 +171,13 @@ def load_raw_documents(raw_dir: Path) -> List[RawDocument]:
     return documents
 
 
-def chunk_documents(documents: Sequence[RawDocument], *, chunk_size: int, chunk_overlap: int) -> List[RawDocument]:
+def chunk_documents(
+    documents: Sequence[RawDocument],
+    *,
+    chunk_size: int,
+    chunk_overlap: int,
+    progress: bool = False,
+) -> List[RawDocument]:
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -179,7 +186,11 @@ def chunk_documents(documents: Sequence[RawDocument], *, chunk_size: int, chunk_
     )
 
     chunks: List[RawDocument] = []
-    for doc in documents:
+    iterable: Iterable[RawDocument] = documents
+    if progress:
+        iterable = tqdm(documents, desc="Chunking", unit="doc")
+
+    for doc in iterable:
         splits = splitter.split_text(doc.text) or [doc.text]
         total = len(splits)
         for index, text in enumerate(splits):
@@ -191,7 +202,15 @@ def chunk_documents(documents: Sequence[RawDocument], *, chunk_size: int, chunk_
     return chunks
 
 
-def embed_chunks(chunks: Sequence[RawDocument], *, collection_name: str, db_dir: Path, batch_size: int, reset: bool) -> None:
+def embed_chunks(
+    chunks: Sequence[RawDocument],
+    *,
+    collection_name: str,
+    db_dir: Path,
+    batch_size: int,
+    reset: bool,
+    progress: bool = False,
+) -> None:
     api_key = os.getenv("UPSTAGE_API_KEY") or settings.upstage_api_key
     if not api_key:
         raise RuntimeError("UPSTAGE_API_KEY not configured.")
@@ -216,7 +235,11 @@ def embed_chunks(chunks: Sequence[RawDocument], *, collection_name: str, db_dir:
         except Exception:
             continue
 
-    for start in range(0, len(chunks), batch_size):
+    batch_indices: Iterable[int] = range(0, len(chunks), batch_size)
+    if progress:
+        batch_indices = tqdm(batch_indices, desc="Embedding", unit="batch")
+
+    for start in batch_indices:
         batch = chunks[start : start + batch_size]
         texts = [item.text for item in batch]
         vectors = embeddings.embed_documents(texts)
@@ -254,29 +277,50 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not raw_dir.exists():
         raise SystemExit(f"Raw data directory not found: {raw_dir}")
 
+    separator = "=" * 70
+    print(separator)
+    print("📚 복지 문서 ChromaDB 로딩 파이프라인")
+    print(separator)
+    print(f"원본 데이터 디렉터리 : {raw_dir}")
+    print(f"Chroma 저장 경로     : {args.db_dir}")
+    print(f"컬렉션 이름          : {args.collection}")
+    print(f"청크 크기 / 겹침     : {args.chunk_size} / {args.chunk_overlap}")
+    print(separator)
+
+    print("\n[STEP 1] Loading documents...")
     print(f"[INFO] Loading welfare records from {raw_dir}")
     documents = load_raw_documents(raw_dir)
     if not documents:
         print("[WARN] No welfare records found. Aborting.")
         return 1
-    print(f"[INFO] Loaded {len(documents)} documents")
+    print(f"[SUCCESS] Loaded {len(documents)} documents")
 
-    print(f"[INFO] Chunking documents (chunk_size={args.chunk_size}, overlap={args.chunk_overlap})")
-    chunks = chunk_documents(documents, chunk_size=args.chunk_size, chunk_overlap=args.chunk_overlap)
-    print(f"[INFO] Generated {len(chunks)} chunks")
+    print(
+        f"\n[STEP 2] Chunking documents (chunk_size={args.chunk_size}, overlap={args.chunk_overlap})"
+    )
+    chunks = chunk_documents(
+        documents,
+        chunk_size=args.chunk_size,
+        chunk_overlap=args.chunk_overlap,
+        progress=True,
+    )
+    print(f"[SUCCESS] Generated {len(chunks)} chunks")
 
     db_dir = Path(args.db_dir).resolve()
     db_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[INFO] Embedding into Chroma directory={db_dir}, collection={args.collection}")
+    print(
+        f"\n[STEP 3] Embedding into Chroma directory={db_dir}, collection={args.collection}"
+    )
     embed_chunks(
         chunks,
         collection_name=args.collection,
         db_dir=db_dir,
         batch_size=args.batch_size,
         reset=args.reset,
+        progress=True,
     )
 
-    print("[INFO] Welfare Chroma index updated successfully")
+    print("[SUCCESS] Welfare Chroma index updated successfully")
     return 0
 
 

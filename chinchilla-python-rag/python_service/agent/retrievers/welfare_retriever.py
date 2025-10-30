@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 from langchain.schema import Document
 from langchain_chroma import Chroma
@@ -58,17 +58,11 @@ class WelfareRetrieverPipeline:
         return path
 
     @cached_property
-    def _retriever(self):
-        store = Chroma(
+    def _store(self) -> Chroma:
+        return Chroma(
             persist_directory=str(self._persist_path),
             embedding_function=self._embeddings,
             collection_name=self.collection_name or "welfare_programs",
-        )
-        kwargs = {"k": self.top_k}
-        kwargs.update(self.search_kwargs)
-        return store.as_retriever(
-            search_type=self.search_type,
-            search_kwargs=kwargs,
         )
 
     def invoke(
@@ -86,7 +80,33 @@ class WelfareRetrieverPipeline:
         if not query:
             raise ValueError("query is required for welfare retrieval")
 
-        return self._retriever.invoke(query)
+        search_kwargs = dict(self.search_kwargs)
+        # Ensure we always request at least one document
+        search_kwargs["k"] = max(1, int(search_kwargs.get("k", self.top_k)))
+
+        try:
+            results = self._store.similarity_search_with_relevance_scores(
+                query,
+                **search_kwargs,
+            )
+        except TypeError:
+            # Older langchain-chroma versions expect `filter` instead of `where` etc.
+            results = self._store.similarity_search_with_relevance_scores(
+                query,
+                search_kwargs["k"],
+                **{k: v for k, v in search_kwargs.items() if k != "k"},
+            )
+
+        documents: List[Document] = []
+        for doc, score in results:
+            metadata = dict(doc.metadata or {})
+            metadata.setdefault("doc_id", metadata.get("id") or metadata.get("uuid"))
+            metadata["relevance_score"] = float(score)
+            documents.append(
+                Document(page_content=doc.page_content, metadata=metadata)
+            )
+
+        return documents
 
 
 def get_welfare_retriever(**kwargs: Any) -> WelfareRetrieverPipeline:
