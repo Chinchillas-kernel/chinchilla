@@ -18,12 +18,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SERP_API_KEY", "serp_api_key"),
     )
 
-    # Naver API
-    naver_client_id: str = Field(
-        ..., validation_alias=AliasChoices("NAVER_CLIENT_ID", "naver_client_id")
+    # Naver API (선택 사항 - 뉴스 카테고리에서만 사용)
+    naver_client_id: str | None = Field(
+        default=None, 
+        validation_alias=AliasChoices("NAVER_CLIENT_ID", "naver_client_id")
     )
-    naver_client_secret: str = Field(
-        ..., validation_alias=AliasChoices("NAVER_CLIENT_SECRET", "naver_client_secret")
+    naver_client_secret: str | None = Field(
+        default=None, 
+        validation_alias=AliasChoices("NAVER_CLIENT_SECRET", "naver_client_secret")
     )
 
     # 선택 항목
