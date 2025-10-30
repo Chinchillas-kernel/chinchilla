@@ -136,7 +136,17 @@
                     body: JSON.stringify(requestData)
                 });
 
-                const data = await response.json();
+                const rawText = await response.text();
+                console.log('API raw response:', rawText);
+
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    console.error('Raw text received:', rawText);
+                    throw new Error('Invalid JSON response');
+                }
                 
                 // 타이핑 인디케이터 숨기기
                 hideTypingIndicator();
