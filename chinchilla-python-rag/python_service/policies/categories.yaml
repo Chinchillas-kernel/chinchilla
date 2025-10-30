@@ -1,0 +1,15 @@
+jobs:
+  description: "노인 일자리 및 고용 정보"
+  retriever: "chroma"
+care:
+  description: "생활도우미 및 돌봄 서비스"
+  retriever: "chroma"
+welfare:
+  description: "문화·생활 복지 서비스 및 프로그램"
+  retriever: "chroma"
+fraud:
+  description: "사기 예방 및 대응"
+  retriever: "chroma"
+news:
+  description: "관련 뉴스 요약"
+  retriever: "chroma"

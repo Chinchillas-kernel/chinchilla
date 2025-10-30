@@ -29,6 +29,30 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("CHROMA_DIR", "chroma_dir"),
     )
 
+    jobs_data_dir: str = Field(
+        default="data/raw/jobs",
+        validation_alias=AliasChoices(
+            "JOBS_DATA_DIR",
+            "jobs_data_dir",
+        ),
+    )
+
+    welfare_chroma_dir: str = Field(
+        default="data/chroma_welfare",
+        validation_alias=AliasChoices(
+            "WELFARE_CHROMA_DIR",
+            "welfare_chroma_dir",
+        ),
+    )
+
+    welfare_data_dir: str = Field(
+        default="data/raw/welfare",
+        validation_alias=AliasChoices(
+            "WELFARE_DATA_DIR",
+            "welfare_data_dir",
+        ),
+    )
+
     data_raw_dir: str = Field(  # ← 누락돼 있던 필드
         default="data/raw",
         validation_alias=AliasChoices("DATA_RAW_DIR", "data_raw_dir"),

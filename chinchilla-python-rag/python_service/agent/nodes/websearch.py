@@ -25,15 +25,17 @@ def make_websearch_node(hooks: Any) -> Callable:
         """
         query = state.get("rewritten_query") or state.get("query", "")
 
+        return {"web_documents": []}
+
         if not query or not settings.serp_api_key:
             return {"web_documents": []}
-
+        
         try:
             from langchain_community.utilities import SerpAPIWrapper
-
+        
             search = SerpAPIWrapper(serpapi_api_key=settings.serp_api_key)
             results = search.run(query)
-
+        
             # Convert to documents
             web_docs = [
                 Document(
@@ -41,9 +43,9 @@ def make_websearch_node(hooks: Any) -> Callable:
                     metadata={"source": "web_search", "query": query},
                 )
             ]
-
+        
             return {"web_documents": web_docs}
-
+        
         except Exception as e:
             print(f"[WARN] Web search failed: {e}")
             return {"web_documents": []}

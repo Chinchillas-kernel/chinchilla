@@ -1,0 +1,16 @@
+jobs:
+  template: "{answer}"
+care:
+  template: "{answer}"
+welfare:
+  header: "문화·생활 복지 상담 결과"
+  template: |
+    문의 내용: {query}
+
+    {answer}
+
+    참고 자료(최대 3개): {sources}
+fraud:
+  template: "{answer}"
+news:
+  template: "{answer}"

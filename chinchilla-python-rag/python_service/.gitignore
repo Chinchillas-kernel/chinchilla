@@ -58,6 +58,8 @@ coverage.xml
 *.log
 *.sqlite
 *.db
+data/chroma_welfare/
+chroma_store/
 
 # Model files and vectors
 *.pkl

@@ -23,7 +23,6 @@ try:
 except Exception as exc:  # pragma: no cover
     raise RuntimeError("Failed to import app.config.settings. Ensure PYTHONPATH is set.") from exc
 
-
 @dataclass
 class JobRecord:
     job_id: str
@@ -390,7 +389,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_argument_parser()
     args = parser.parse_args(argv)
 
-    raw_dir = Path(settings.data_raw_dir)
+    raw_dir = Path(settings.jobs_data_dir)
     merged_csv = raw_dir / "senuri_jobs_merged.csv"
     processed_dir = _ensure_dir(Path("data/processed"))
     job_texts_path = processed_dir / "job_texts.jsonl"
