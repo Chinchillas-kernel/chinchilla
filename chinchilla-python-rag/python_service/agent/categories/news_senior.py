@@ -43,7 +43,7 @@ class NewsHooks(CategoryHooks):
 
     # 검색 관련 설정
     top_k: int = 3  # 검색할 문서 개수
-    min_relevance_threshold: float = 0.5  # gate_node에서 사용하는 최소 관련성 임계값
+    min_relevance_threshold: float = 0.3  # gate_node에서 사용하는 최소 관련성 임계값
 
     def get_retriever(self) -> Any:
         """Return news retriever.

@@ -19,7 +19,9 @@ from tqdm import tqdm
 try:
     from app.config import settings
 except Exception as exc:  # pragma: no cover
-    raise RuntimeError("Failed to import app.config.settings. Ensure PYTHONPATH is set.") from exc
+    raise RuntimeError(
+        "Failed to import app.config.settings. Ensure PYTHONPATH is set."
+    ) from exc
 
 
 @dataclass
@@ -115,7 +117,9 @@ def load_news(merged_json: Path, limit: int = 0) -> List[NewsRecord]:
             }
         )
 
-        news_records.append(NewsRecord(link=link, text=document_text, metadata=metadata))
+        news_records.append(
+            NewsRecord(link=link, text=document_text, metadata=metadata)
+        )
 
     return news_records
 
@@ -155,7 +159,13 @@ def chunk_news(
         for idx, chunk_text in enumerate(splits):
             chunk_id = f"{news_item.link}#{idx}"
             metadata = dict(news_item.metadata)
-            metadata.update({"link": news_item.link, "chunk_index": idx, "chunk_count": total_chunks})
+            metadata.update(
+                {
+                    "link": news_item.link,
+                    "chunk_index": idx,
+                    "chunk_count": total_chunks,
+                }
+            )
             chunk_records.append(
                 ChunkRecord(
                     chunk_id=chunk_id,
@@ -177,7 +187,9 @@ def embed_and_ingest(
     """임베딩 생성 및 ChromaDB 저장 (증분 업데이트)"""
     api_key = os.getenv("UPSTAGE_API_KEY") or settings.upstage_api_key
     if not api_key:
-        raise RuntimeError("UPSTAGE_API_KEY not configured. Set environment variable or .env entry.")
+        raise RuntimeError(
+            "UPSTAGE_API_KEY not configured. Set environment variable or .env entry."
+        )
 
     client = chromadb.PersistentClient(
         path=str(db_path.absolute()),
@@ -193,7 +205,9 @@ def embed_and_ingest(
 
     collection = client.get_or_create_collection(name=collection_name)
 
-    embeddings_model = UpstageEmbeddings(api_key=api_key, model="solar-embedding-1-large")
+    embeddings_model = UpstageEmbeddings(
+        api_key=api_key, model="solar-embedding-1-large"
+    )
 
     updated_chunks: List[ChunkRecord] = []
 
@@ -208,7 +222,9 @@ def embed_and_ingest(
             continue
 
     # 배치 단위로 임베딩 및 저장
-    for start in tqdm(range(0, len(chunks), batch_size), desc="Embedding", unit="batch"):
+    for start in tqdm(
+        range(0, len(chunks), batch_size), desc="Embedding", unit="batch"
+    ):
         batch = list(chunks[start : start + batch_size])
         texts = [item.text for item in batch]
         vectors = embeddings_model.embed_documents(texts)
@@ -251,7 +267,9 @@ def dump_chunks(path: Path, chunks: Sequence[ChunkRecord]) -> None:
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Chunk and embed News data into ChromaDB.")
+    parser = argparse.ArgumentParser(
+        description="Chunk and embed News data into ChromaDB."
+    )
     parser.add_argument(
         "--limit",
         type=int,
@@ -301,7 +319,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     raw_dir = Path(settings.data_raw_dir)
-    merged_json = raw_dir / "news_merged.json"
+    merged_json = raw_dir / "news" / "news_merged.json"
     processed_dir = _ensure_dir(Path("data/processed"))
     news_texts_path = processed_dir / "news_texts.jsonl"
     embedded_chunks_path = processed_dir / "news_embedded_chunks.json"

@@ -111,19 +111,22 @@ class NewsRetriever:
         results = self.collection.query(
             query_embeddings=[query_embedding],
             n_results=n_results,
+            include=["documents", "metadatas", "distances"],
         )
 
         # LangChain Document로 변환
         documents = []
         if results["documents"] and results["documents"][0]:
-            for doc, meta in zip(
+            for doc, meta, distance in zip(
                 results["documents"][0],
                 (
                     results["metadatas"][0]
                     if results["metadatas"]
                     else [{}] * len(results["documents"][0])
                 ),
+                results["distances"][0],
             ):
+                meta["relevance_score"] = max(0.0, 1.0 - (distance / 2.0))
                 documents.append(
                     Document(
                         page_content=doc,

@@ -272,7 +272,7 @@ def collect_news_data(max_articles: Optional[int] = None):
         client_id=settings.naver_client_id,
         client_secret=settings.naver_client_secret,
     )
-    raw_news = collector.collect_all(display_per_keyword=50)
+    raw_news = collector.collect_all(display_per_keyword=100)
 
     if not raw_news:
         print("⚠️ 수집된 뉴스가 없습니다.")
@@ -293,7 +293,7 @@ def collect_news_data(max_articles: Optional[int] = None):
     print("\n[Step 3/3] JSON 파일 저장")
 
     raw_dir = settings.data_raw_dir
-    os.makedirs(raw_dir, exist_ok=True)
+    os.makedirs(os.path.join(raw_dir, "news"), exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     merged_file = os.path.join(raw_dir, "news_merged.json")
