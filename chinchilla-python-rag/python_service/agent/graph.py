@@ -1,4 +1,5 @@
 """LangGraph workflow builder - common graph with hooks injection."""
+
 from typing import Any, Dict, TypedDict
 from langgraph.graph import StateGraph, END
 
@@ -16,6 +17,7 @@ from agent.nodes import (
 # ============================================================================
 # State Definition (공통)
 # ============================================================================
+
 
 class AgentState(TypedDict, total=False):
     """Shared state for agent workflow across all categories."""
@@ -48,6 +50,7 @@ class AgentState(TypedDict, total=False):
 # Graph Builder (팩토리 패턴)
 # ============================================================================
 
+
 def build_graph(hooks: CategoryHooks) -> Any:
     """Build LangGraph workflow with multi-level search strategy.
 
@@ -56,7 +59,7 @@ def build_graph(hooks: CategoryHooks) -> Any:
     2. If grade="no":
        a. If filter_level < 3: widen_filter → retrieve
        b. Else if retry_count < 2: increment_retry → rewrite
-       c. Else: websearch → generate
+       c. Else: fallback_answer → END
     3. If grade="yes": generate
 
     Args:
@@ -82,6 +85,16 @@ def build_graph(hooks: CategoryHooks) -> Any:
             "filter_level": 0,  # Reset filter level on retry
         }
 
+    def fallback_answer_node(state: AgentState) -> dict:
+        """Generates a fallback message when no answer can be found."""
+        print(
+            "[FALLBACK] No relevant documents found after all retries. Returning fallback message."
+        )
+        return {
+            "answer": "죄송합니다. 해당 질문에 대한 답변을 할 수 없습니다",
+            "sources": [],
+        }
+
     # Build graph
     workflow = StateGraph(AgentState)
 
@@ -93,6 +106,7 @@ def build_graph(hooks: CategoryHooks) -> Any:
     workflow.add_node("increment_retry", increment_retry)
     workflow.add_node("websearch", websearch_node)
     workflow.add_node("generate", generate_node)
+    workflow.add_node("fallback_answer", fallback_answer_node)
 
     # Entry point
     workflow.set_entry_point("rewrite")
@@ -110,8 +124,7 @@ def build_graph(hooks: CategoryHooks) -> Any:
         2. If not relevant (grade=no):
            a. Try filter widening (if filter_level < 3)
            b. Try query rewrite (if retry_count < 2)
-           c. Try web search
-           d. Generate anyway (as fallback)
+           c. Provide fallback message
         """
         grade_decision = state.get("grade_decision", "no")
         retry_count = state.get("retry_count", 0)
@@ -124,7 +137,9 @@ def build_graph(hooks: CategoryHooks) -> Any:
             return "generate"
 
         # Documents not relevant, try recovery strategies
-        print(f"[ROUTE] Grade=NO, quality={quality}, filter_level={filter_level}, retry={retry_count}")
+        print(
+            f"[ROUTE] Grade=NO, quality={quality}, filter_level={filter_level}, retry={retry_count}"
+        )
 
         # Strategy 1: Widen filters (if not exhausted)
         if filter_level < 3:
@@ -136,9 +151,9 @@ def build_graph(hooks: CategoryHooks) -> Any:
             print(f"[ROUTE] → increment_retry (attempt {retry_count + 1}/2)")
             return "increment_retry"
 
-        # Strategy 3: Try web search as last resort
-        print("[ROUTE] → websearch (fallback)")
-        return "websearch"
+        # Strategy 3: All strategies exhausted, provide fallback message
+        print("[ROUTE] → fallback_answer (all strategies failed)")
+        return "fallback_answer"
 
     workflow.add_conditional_edges(
         "grade",
@@ -146,7 +161,7 @@ def build_graph(hooks: CategoryHooks) -> Any:
         {
             "widen_filter": "widen_filter",
             "increment_retry": "increment_retry",
-            "websearch": "websearch",
+            "fallback_answer": "fallback_answer",
             "generate": "generate",
         },
     )
@@ -159,6 +174,9 @@ def build_graph(hooks: CategoryHooks) -> Any:
 
     # websearch → generate (merge web results)
     workflow.add_edge("websearch", "generate")
+
+    # fallback → END
+    workflow.add_edge("fallback_answer", END)
 
     # generate → END
     workflow.add_edge("generate", END)
