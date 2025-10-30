@@ -14,6 +14,9 @@ reviews:
       - dev
       - develop
       - feature/*
+  branches:
+  # 이 값을 false로 설정하면 모든 브랜치에서 자동 리뷰를 허용합니다.
+    default_branch_only: false
   
   # 리뷰 스타일
   profile: chill  # chill: 친절하고 건설적
