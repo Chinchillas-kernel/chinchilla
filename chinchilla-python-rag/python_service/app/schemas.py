@@ -151,11 +151,42 @@ class WelfareRequest(BaseModel):
     payload: WelfarePayload
 
 
+# ============================================================================
+# Scam Defense Category Schemas (금융 사기 탐지 및 대응)
+# ============================================================================
+
+
+class ScamDefensePayload(BaseModel):
+    """Payload for scam defense queries."""
+
+    query: str = Field(
+        ...,
+        description="의심스러운 메시지 또는 사기 의심 내용 (필수)",
+        examples=[
+            "안녕하세요. KB국민은행입니다. 고객님의 카드가 정지되어 본인확인이 필요합니다.",
+            "검찰청입니다. 고객님 계좌가 금융사기에 연루되어 안전계좌로 이체가 필요합니다.",
+        ],
+    )
+    sender: Optional[str] = Field(
+        None,
+        description="발신자 정보 (전화번호 또는 발신자명)",
+        examples=["02-1234-5678", "KB국민은행", "검찰청"],
+    )
+
+
+class ScamDefenseRequest(BaseModel):
+    """Scam defense category request."""
+
+    category: Literal["scam_defense"]
+    payload: ScamDefensePayload
+
+
 AgentRequest = Union[
     JobsRequest,
     WelfareRequest,  # 팀원이 추가
     NewsRequest,
     LegalRequest,
+    ScamDefenseRequest,  # 금융 사기 탐지 및 대응
 ]
 
 
@@ -186,4 +217,7 @@ __all__ = [
     "LegalRequest",
     "NewsPayload",
     "NewsRequest",
+    # Scam Defense
+    "ScamDefensePayload",
+    "ScamDefenseRequest",
 ]
