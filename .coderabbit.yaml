@@ -1,26 +1,31 @@
-# CodeRabbit 설정 - Chinchilla 프로젝트
+# CodeRabbit 설정
 language: ko
 
 reviews:
-  # 자동 리뷰 활성화
   auto_review:
     enabled: true
     drafts: false
-    # ✅ 핵심: 모든 브랜치 명시
+    # 모든 브랜치에서 리뷰
     base_branches:
-      - "**"  # 모든 브랜치
+      - main
+      - dev
+      - develop
+      - master
+      - "feature/**"
+      - "fix/**"
+      - "test/**"
+      - "docs/**"
   
-  # ✅ 추가: 명시적으로 모든 브랜치 허용
-  all_branches: true
-  
+  # 프로파일
   profile: chill
+  
+  # 리뷰 옵션
   high_level_summary: true
   poem: false
   review_status: true
   collapse_walkthrough: false
-  request_changes_workflow: false
   
-  # 파일 패턴
+  # 파일 필터
   path_filters:
     - "**/*.java"
     - "**/*.py"
@@ -28,26 +33,34 @@ reviews:
     - "**/*.yml"
     - "**/*.yaml"
     - "**/*.md"
+    - "**/*.json"
   
-  # 제외 패턴
+  # 제외 파일
   path_ignore:
     - "**/node_modules/**"
     - "**/build/**"
+    - "**/dist/**"
     - "**/__pycache__/**"
-    - "**/data/chroma_*/**"
+    - "**/*.pyc"
+    - "**/data/chroma_*/**"        # ChromaDB 제외
+    - "**/chroma.sqlite3"          # SQLite 파일 제외
+    - "**/data/raw/**"
   
   # 파일별 지침
   path_instructions:
-    - path: "**/*.java"
-      instructions: |
-        - Java 21 및 Spring Boot 3.2 베스트 프랙티스
-        - 보안 취약점 체크
-    
     - path: "**/*.py"
       instructions: |
-        - Python 3.11+ 코딩 스타일 (PEP 8)
-        - RAG 파이프라인 로직 검토
-        - Upstage API 최적화
+        Python 코드 리뷰:
+        - PEP 8 스타일 가이드 준수
+        - 타입 힌팅 확인
+        - Docstring 작성
+        - 에러 핸들링
+    
+    - path: "**/*.java"
+      instructions: |
+        Java 코드 리뷰:
+        - Spring Boot 베스트 프랙티스
+        - 보안 취약점 체크
 
 chat:
   auto_reply: true
@@ -58,12 +71,30 @@ enable_free_tier: true
 
 ---
 
-## 🎯 지금 바로 할 일
+### 방법 3: GitHub에서 직접 확인
 
-### 1. 화면 아래로 스크롤
+**PR 페이지에서:**
 
-맨 아래 **"Apply Changes"** 버튼이 보일 거예요!
+1. **"Details" 링크 클릭** (CodeRabbit 옆)
+2. **Skip 이유 확인**
+
+**예상 이유:**
+- ❌ Binary files (chroma.sqlite3)
+- ❌ No code changes
+- ❌ Draft PR
+- ❌ Branch filter
+
+---
+
+## 🔧 지금 바로 할 일
+
+### 1단계: PR 코멘트로 강제 리뷰
+
+**PR 페이지에서 코멘트:**
 ```
-┌──────────────────────────────┐
-│  [Apply Changes]             │  ← 주황색 버튼 클릭!
-└──────────────────────────────┘
+@coderabbitai review
+```
+
+**또는 더 자세한 명령:**
+```
+@coderabbitai full review
