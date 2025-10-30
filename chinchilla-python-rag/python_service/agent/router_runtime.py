@@ -6,6 +6,7 @@ from agent.categories.base import CategoryHooks
 from agent.categories.jobs import JobsHooks
 from agent.categories.welfare import WelfareHooks
 from agent.graph import build_graph
+from agent.categories.legal import LegalHooks
 
 
 # ============================================================================
@@ -28,6 +29,7 @@ def get_all_hooks() -> Dict[str, CategoryHooks]:
         "jobs": JobsHooks(),
         "welfare": WelfareHooks(),
         # "news": NewsHooks(),         # 팀원이 추가
+        "legal": LegalHooks(),
     }
 
 
