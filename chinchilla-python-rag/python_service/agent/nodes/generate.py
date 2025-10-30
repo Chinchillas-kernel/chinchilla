@@ -1,4 +1,5 @@
 """Generate node: final answer generation using LLM."""
+from collections import Counter
 from typing import Callable, Dict, Any, List
 from langchain.schema import Document
 
@@ -73,6 +74,27 @@ def make_generate_node(hooks: Any) -> Callable:
             response = llm.invoke(messages)
             answer = response.content.strip()
 
+            trace = state.get("retrieval_trace", [])
+            origin_counts = Counter(
+                (doc.metadata.get("origin") or "vector_db") for doc in all_docs
+            )
+
+            summary_lines = []
+            if origin_counts:
+                vector_count = origin_counts.get("vector_db")
+                web_count = origin_counts.get("web_search")
+                if vector_count:
+                    summary_lines.append(f"벡터 DB 문서 {vector_count}건")
+                if web_count:
+                    summary_lines.append(f"웹 검색 문서 {web_count}건")
+            if not summary_lines:
+                summary_lines.append("참고 문서를 찾지 못했습니다")
+
+            summary_block = "\n".join(f"- {line}" for line in summary_lines)
+            answer_with_summary = (
+                f"{answer}\n\n---\n**출처 요약**\n{summary_block}"
+            )
+
             # Extract sources
             sources = [
                 {
@@ -82,7 +104,16 @@ def make_generate_node(hooks: Any) -> Callable:
                 for doc in all_docs[:5]
             ]
 
-            return {"answer": answer, "sources": sources}
+            retrieval_stats = {
+                "origin_counts": dict(origin_counts),
+                "trace": trace,
+            }
+
+            return {
+                "answer": answer_with_summary,
+                "sources": sources,
+                "retrieval_stats": retrieval_stats,
+            }
 
         except Exception as e:
             print(f"[ERROR] Generation failed: {e}")

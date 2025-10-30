@@ -170,6 +170,13 @@ def make_enhanced_retrieve_node(hooks: Any) -> Callable:
             else:
                 documents = []
 
+            for doc in documents:
+                # Ensure downstream can identify provenance and filter level
+                metadata = dict(doc.metadata)
+                metadata.setdefault("origin", "vector_db")
+                metadata["retrieval_filter_level"] = filter_level
+                doc.metadata = metadata
+
             # Assess quality
             quality_info = assess_search_quality(documents, hooks.min_relevance_threshold)
 
@@ -177,15 +184,35 @@ def make_enhanced_retrieve_node(hooks: Any) -> Callable:
                   f"avg score: {quality_info['avg_score']:.2f}, "
                   f"quality: {quality_info['quality']}")
 
+            trace = list(state.get("retrieval_trace", []))
+            trace.append(
+                {
+                    "type": "vector_search",
+                    "filter_level": filter_level,
+                    "profile_keys": sorted(list((retriever_input.get("profile") or {}).keys())),
+                    "doc_count": len(documents),
+                    "quality": quality_info["quality"],
+                }
+            )
+
             return {
                 "documents": documents,
                 "search_quality": quality_info["quality"],
                 "avg_relevance_score": quality_info["avg_score"],
+                "retrieval_trace": trace,
             }
 
         except Exception as e:
             print(f"[ERROR] Enhanced retrieval failed: {e}")
-            return {"documents": [], "search_quality": "low"}
+            trace = list(state.get("retrieval_trace", []))
+            trace.append(
+                {
+                    "type": "vector_search_error",
+                    "filter_level": filter_level,
+                    "error": str(e),
+                }
+            )
+            return {"documents": [], "search_quality": "low", "retrieval_trace": trace}
 
     return enhanced_retrieve_node
 

@@ -36,6 +36,8 @@ class AgentState(TypedDict, total=False):
     grade_decision: str  # "yes" or "no" from grade node
     search_quality: str  # "high", "medium", "low"
     avg_relevance_score: float
+    retrieval_trace: list
+    retrieval_stats: dict
 
     # Retrieved data
     documents: list
