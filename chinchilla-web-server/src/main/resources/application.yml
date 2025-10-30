@@ -65,6 +65,6 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
 # Python RAG ???
-python:
-  rag:
+agent:
+  api:
     url: http://localhost:8000

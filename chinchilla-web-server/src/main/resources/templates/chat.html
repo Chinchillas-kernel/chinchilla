@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${categoryTitle} + ' - 복지로 챗봇'">복지로 챗봇</title>
+    <link rel="stylesheet" th:href="@{/css/chat.css}">
+</head>
+<body>
+    <div class="chat-header">
+        <a href="/" class="back-button">←</a>
+        <div class="header-title">
+            <h2 th:text="${categoryTitle}">채팅</h2>
+        </div>
+        <div style="width: 40px;"></div>
+    </div>
+
+    <div class="chat-container">
+        <!-- 일자리 매칭인 경우에만 프로필 섹션 표시 -->
+        <div class="profile-section" th:if="${category == 'jobs'}">
+            <h3>프로필 입력</h3>
+            <form id="profileForm">
+                <div class="form-group">
+                    <label for="age">나이</label>
+                    <input type="number" id="age" min="60" max="100" value="65" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="gender">성별</label>
+                    <select id="gender" required>
+                        <option value="male">남성</option>
+                        <option value="female">여성</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="location">거주 지역</label>
+                    <input type="text" id="location" placeholder="예: 서울시 강남구" required>
+                </div>
+
+                <div style="margin-top: 20px; padding: 15px; background: #e8f4fd; border-radius: 8px; font-size: 13px; color: #1976d2;">
+                    💡 프로필 정보는 맞춤형 일자리 추천을 위해 사용됩니다.
+                </div>
+            </form>
+        </div>
+
+        <div class="chat-section">
+            <div class="messages-container" id="messagesContainer">
+                <!-- 초기 메시지 -->
+                <div class="message bot">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content" th:if="${category == 'jobs'}">
+안녕하세요! 노인 일자리 매칭 서비스입니다.
+                        
+왼쪽에 프로필을 입력하시고, 궁금하신 점을 질문해주세요.
+                        
+예시:
+- "무릎이 안 좋은데 할 수 있는 일자리가 있나요?"
+- "주 3일 정도만 일하고 싶어요"
+- "사무직 경험이 있는데 관련 일자리 추천해주세요"
+                    </div>
+                    <div class="message-content" th:unless="${category == 'jobs'}">
+                        안녕하세요! <span th:text="${categoryTitle}"></span> 서비스입니다.
+                        
+무엇을 도와드릴까요? 궁금하신 점을 자유롭게 질문해주세요.
+                    </div>
+                </div>
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+
+            <div class="input-section">
+                <div class="input-container">
+                    <input type="text" 
+                           id="messageInput" 
+                           class="message-input" 
+                           placeholder="메시지를 입력하세요..."
+                           autofocus>
+                    <button id="sendButton" class="send-button">전송</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        const category = /*[[${category}]]*/ 'jobs';
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        // 메시지 전송 함수
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // 일자리 매칭인 경우 프로필 정보 확인
+            let requestData = {
+                category: category,
+                query: message
+            };
+
+            if (category === 'jobs') {
+                const age = document.getElementById('age').value;
+                const gender = document.getElementById('gender').value;
+                const location = document.getElementById('location').value;
+
+                if (!age || !location) {
+                    alert('프로필 정보를 모두 입력해주세요.');
+                    return;
+                }
+
+                requestData.age = parseInt(age);
+                requestData.gender = gender;
+                requestData.location = location;
+            }
+
+            // 사용자 메시지 표시
+            addMessage(message, 'user');
+            messageInput.value = '';
+            sendButton.disabled = true;
+
+            // 타이핑 인디케이터 표시
+            showTypingIndicator();
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+                
+                // 타이핑 인디케이터 숨기기
+                hideTypingIndicator();
+                
+                // 봇 응답 표시
+                addMessage(data.answer || '죄송합니다. 응답을 받을 수 없습니다.', 'bot');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                hideTypingIndicator();
+                addMessage('죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'bot');
+            } finally {
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // 메시지 추가 함수
+        function addMessage(content, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = sender === 'user' ? '👤' : '🤖';
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            messageContent.textContent = content;
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(messageContent);
+
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 타이핑 인디케이터 표시/숨기기
+        function showTypingIndicator() {
+            typingIndicator.classList.add('active');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            typingIndicator.classList.remove('active');
+        }
+
+        // 이벤트 리스너
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // 페이지 로드 시 입력창에 포커스
+        window.addEventListener('load', () => {
+            messageInput.focus();
+        });
+    </script>
+</body>
+</html>
