@@ -50,13 +50,17 @@ def dispatch(
         # Max path: retry(3) * filter_levels(4) * nodes_per_level(4) = ~48 steps
         result = graph.invoke(state, config={"recursion_limit": 50})
 
+        metadata = {
+            "category": category,
+            "rewritten_query": result.get("rewritten_query"),
+        }
+        if result.get("retrieval_stats") is not None:
+            metadata["retrieval_stats"] = result["retrieval_stats"]
+
         return AgentResponse(
             answer=result.get("answer", ""),
             sources=result.get("sources", []),
-            metadata={
-                "category": category,
-                "rewritten_query": result.get("rewritten_query"),
-            },
+            metadata=metadata,
         )
 
     except Exception as e:

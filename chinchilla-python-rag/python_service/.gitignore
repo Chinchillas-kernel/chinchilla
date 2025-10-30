@@ -60,6 +60,7 @@ coverage.xml
 *.db
 data/chroma_welfare/
 chroma_store/
+chroma.sqlite3
 
 # Model files and vectors
 *.pkl

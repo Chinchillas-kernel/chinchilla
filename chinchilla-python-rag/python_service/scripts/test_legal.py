@@ -11,7 +11,7 @@ print("런타임 준비 완료.")
 req = LegalRequest(
     category="legal",
     payload=LegalPayload(
-        query="내 자식이 3명인데 내 재산은 부동산이랑 주식이랑 현금 이렇게 있어 상속하려면 언제가 좋고 어떻게 해야할까",
+        query="계란후라이 만드는법 알려줘",
         profile=LegalProfile(age=68, region="서울"),
     ),
 )
