@@ -63,9 +63,30 @@ class JobsRequest(BaseModel):
 # Discriminated Union (카테고리 추가 시 여기에 등록)
 # ============================================================================
 
+class WelfarePayload(BaseModel):
+    """Payload for welfare category queries."""
+
+    query: str = Field(..., description="상담을 원하는 내용")
+    location: Optional[str] = Field(
+        default=None,
+        description="관심 지역 (예: 서울, 부산 해운대구)",
+    )
+    audience: Optional[str] = Field(
+        default=None,
+        description="대상자 정보 (예: 독거노인, 치매 어르신)",
+    )
+
+
+class WelfareRequest(BaseModel):
+    """Welfare category request."""
+
+    category: Literal["welfare"]
+    payload: WelfarePayload
+
+
 AgentRequest = Union[
     JobsRequest,
-    # WelfareRequest,  # 팀원이 추가
+    WelfareRequest,
     # NewsRequest,     # 팀원이 추가
 ]
 
@@ -85,6 +106,8 @@ __all__ = [
     "JobsProfile",
     "JobsPayload",
     "JobsRequest",
+    "WelfarePayload",
+    "WelfareRequest",
     "AgentRequest",
     "AgentResponse",
 ]

@@ -4,6 +4,7 @@ from typing import Any, Dict, Tuple
 
 from agent.categories.base import CategoryHooks
 from agent.categories.jobs import JobsHooks
+from agent.categories.welfare import WelfareHooks
 from agent.graph import build_graph
 
 
@@ -25,7 +26,7 @@ def get_all_hooks() -> Dict[str, CategoryHooks]:
     """
     return {
         "jobs": JobsHooks(),
-        # "welfare": WelfareHooks(),  # 팀원이 추가
+        "welfare": WelfareHooks(),
         # "news": NewsHooks(),         # 팀원이 추가
     }
 
