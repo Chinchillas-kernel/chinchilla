@@ -13,6 +13,7 @@ class LegalHooks(CategoryHooks):
     """노인 법률 상담 카테고리를 위한 훅"""
 
     name: str = "legal"
+    retriever_factory: Any = None
 
     # 쿼리 재작성 시스템 프롬프트
     rewrite_system_prompt: str = (
@@ -26,7 +27,8 @@ class LegalHooks(CategoryHooks):
         "예시:\n"
         "- 원본: '65세 이상 노인이 받을 수 있는 돈은?'\n"
         "- 재작성: '65세 이상 노인 기초연금 급여 자격 요건'\n\n"
-        "간결하고 명확하게 재작성하세요."
+        "--- 중요 ---\n"
+        "다른 어떤 설명이나 서식, 따옴표도 없이 재작성된 검색 쿼리 문자열만 반환하세요."
     )
 
     # 답변 생성 시스템 프롬프트
@@ -67,11 +69,12 @@ class LegalHooks(CategoryHooks):
 
     # 검색 파라미터
     top_k: int = 5
-    min_relevance_threshold: float = 0.6  # 법률은 높은 정확도 필요
+    min_relevance_threshold: float = 0.3  # 법률은 높은 정확도 필요
     fetch_k: int = 20  # MMR을 위한 초기 검색 개수
 
-    def __init__(self):
-        """리트리버 팩토리 초기화"""
+    def __init__(self, **data: Any):
+        """Initialize the retriever factory for this category."""
+        super().__init__(**data)
         self.retriever_factory = LegalRetriever()
 
     def get_retriever(self, payload: dict = None) -> Any:

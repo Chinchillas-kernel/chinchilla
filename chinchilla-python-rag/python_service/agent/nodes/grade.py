@@ -1,4 +1,5 @@
 """Grade node: evaluate document relevance to query."""
+
 from typing import Callable, Dict, Any, Literal
 
 
@@ -38,7 +39,9 @@ def make_grade_node(hooks: Any) -> Callable:
         ]
 
         if not relevant_docs:
-            print(f"[GRADE] No documents above threshold ({hooks.min_relevance_threshold}) → rewrite")
+            print(
+                f"[GRADE] No documents above threshold ({hooks.min_relevance_threshold}) → rewrite"
+            )
             return {"grade_decision": "no"}
 
         # Use LLM to grade relevance
