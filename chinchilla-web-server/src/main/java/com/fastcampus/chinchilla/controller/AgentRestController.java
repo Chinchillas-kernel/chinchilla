@@ -4,6 +4,7 @@ import com.fastcampus.chinchilla.dto.AgentRequest;
 import com.fastcampus.chinchilla.dto.AgentResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
@@ -75,6 +77,7 @@ public class AgentRestController {
             return response;
             
         } catch (Exception e) {
+            log.info("AgentRestController : error => {}", e.getMessage());
             // 에러 발생 시 기본 응답 반환
             AgentResponse errorResponse = new AgentResponse();
             errorResponse.setAnswer("죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
