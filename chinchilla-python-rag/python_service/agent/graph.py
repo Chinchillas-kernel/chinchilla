@@ -85,15 +85,15 @@ def build_graph(hooks: CategoryHooks) -> Any:
             "filter_level": 0,  # Reset filter level on retry
         }
 
-    def fallback_answer_node(state: AgentState) -> dict:
-        """Generates a fallback message when no answer can be found."""
-        print(
-            "[FALLBACK] No relevant documents found after all retries. Returning fallback message."
-        )
-        return {
-            "answer": "죄송합니다. 해당 질문에 대한 답변을 할 수 없습니다",
-            "sources": [],
-        }
+    # def fallback_answer_node(state: AgentState) -> dict:
+    #     """Generates a fallback message when no answer can be found."""
+    #     print(
+    #         "[FALLBACK] No relevant documents found after all retries. Returning fallback message."
+    #     )
+    #     return {
+    #         "answer": "죄송합니다. 해당 질문에 대한 답변을 할 수 없습니다",
+    #         "sources": [],
+    #     }
 
     # Build graph
     workflow = StateGraph(AgentState)
@@ -106,7 +106,7 @@ def build_graph(hooks: CategoryHooks) -> Any:
     workflow.add_node("increment_retry", increment_retry)
     workflow.add_node("websearch", websearch_node)
     workflow.add_node("generate", generate_node)
-    workflow.add_node("fallback_answer", fallback_answer_node)
+    # workflow.add_node("fallback_answer", fallback_answer_node)
 
     # Entry point
     workflow.set_entry_point("rewrite")
@@ -152,8 +152,8 @@ def build_graph(hooks: CategoryHooks) -> Any:
             return "increment_retry"
 
         # Strategy 3: All strategies exhausted, provide fallback message
-        print("[ROUTE] → fallback_answer (all strategies failed)")
-        return "fallback_answer"
+        print("[ROUTE] → websearch (all strategies failed)")
+        return "websearch"
 
     workflow.add_conditional_edges(
         "grade",
@@ -161,7 +161,7 @@ def build_graph(hooks: CategoryHooks) -> Any:
         {
             "widen_filter": "widen_filter",
             "increment_retry": "increment_retry",
-            "fallback_answer": "fallback_answer",
+            "websearch": "websearch",
             "generate": "generate",
         },
     )
@@ -176,7 +176,7 @@ def build_graph(hooks: CategoryHooks) -> Any:
     workflow.add_edge("websearch", "generate")
 
     # fallback → END
-    workflow.add_edge("fallback_answer", END)
+    # workflow.add_edge("fallback_answer", END)
 
     # generate → END
     workflow.add_edge("generate", END)

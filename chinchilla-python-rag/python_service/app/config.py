@@ -1,4 +1,5 @@
 # app/config.py
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import AliasChoices, Field
 
@@ -26,7 +27,7 @@ class Settings(BaseSettings):
     )
 
     # 선택 항목
-    langsmith_api_key: str | None = Field(
+    langsmith_api_key: Optional[str] = Field(
         default=None,
         validation_alias=AliasChoices("LANGSMITH_API_KEY", "langsmith_api_key"),
     )
