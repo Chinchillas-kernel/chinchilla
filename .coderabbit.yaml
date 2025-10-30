@@ -10,13 +10,7 @@ reviews:
     enabled: true
     drafts: false  # 드래프트 PR은 리뷰 안 함
     base_branches:
-      - main
-      - dev
-      - develop
-      - feature/*
-  branches:
-  # 이 값을 false로 설정하면 모든 브랜치에서 자동 리뷰를 허용합니다.
-    default_branch_only: false
+      - "**"  # ✅ 모든 브랜치 포함
   
   # 리뷰 스타일
   profile: chill  # chill: 친절하고 건설적
@@ -32,12 +26,25 @@ reviews:
   
   # 리뷰할 파일 패턴
   path_filters:
-    - "spring-web/**/*.java"
-    - "python-rag/**/*.py"
+    - "**/*.java"  # ✅ 경로 단순화
+    - "**/*.py"
     - "**/*.gradle"
     - "**/*.yml"
     - "**/*.yaml"
     - "**/*.md"
+    - "**/*.json"
+    - "**/*.xml"
+    
+  # 제외할 파일 패턴
+  path_ignore:
+    - "**/node_modules/**"
+    - "**/build/**"
+    - "**/dist/**"
+    - "**/.gradle/**"
+    - "**/__pycache__/**"
+    - "**/*.pyc"
+    - "**/data/chroma_*/**"  # ChromaDB 벡터 저장소 제외
+    - "**/data/raw/**"       # 원본 데이터 제외
   
   # 파일별 지침
   path_instructions:
