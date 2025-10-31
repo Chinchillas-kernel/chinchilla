@@ -2,7 +2,6 @@
 
 from typing import Any, Dict, TypedDict
 from langgraph.graph import StateGraph, END
-
 from agent.categories.base import CategoryHooks
 from agent.nodes import (
     make_rewrite_node,
