@@ -1,17 +1,16 @@
 """
 법률 문서 검색 리트리버
-노인 법률 상담을 위한 ChromaDB 기반 리트리버
+노인 법률 상담을 위한 ChromaDB 기반 리트리버 (최적화 버전)
 """
 
 from __future__ import annotations
 
+from functools import cached_property
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional, Sequence, Union
 
-import chromadb
-from chromadb.config import Settings
+from langchain.schema import Document
 from langchain_chroma import Chroma
-from langchain_core.retrievers import BaseRetriever
 from langchain_upstage import UpstageEmbeddings
 
 try:
@@ -22,105 +21,121 @@ except Exception as exc:
     ) from exc
 
 
-class LegalRetriever:
+class LegalRetrieverPipeline:
     """
-    노인 법률 문서 검색 리트리버
+    노인 법률 문서 검색 리트리버 (고성능 최적화 버전)
 
-    ChromaDB에 저장된 법률 문서를 검색하는 리트리버를 생성합니다.
-    프로필 기반 필터링을 지원합니다.
+    최적화 포인트:
+    - ChromaDB collection 직접 쿼리로 오버헤드 제거
+    - @cached_property로 중복 초기화 방지
+    - 불필요한 타입 체크 및 변환 최소화
+    - 리스트 컴프리헨션으로 빠른 Document 생성
+    - 예외 처리 제거로 빠른 경로 유지
     """
 
     def __init__(
         self,
-        collection_name: str = "elderly_legal",
-        persist_directory: Optional[str] = None,
-    ):
-        """
-        리트리버 초기화
-
-        Args:
-            collection_name: ChromaDB 컬렉션 이름
-            persist_directory: ChromaDB 저장 경로 (None이면 기본 경로 사용)
-        """
-        self.collection_name = collection_name
-
-        # ChromaDB 경로 설정
-        if persist_directory:
-            self.persist_directory = Path(persist_directory)
-        else:
-            chroma_base = Path(settings.chroma_dir).parent
-            self.persist_directory = chroma_base / "chroma_legal"
-
-        # Embeddings 초기화
-        self.embeddings = UpstageEmbeddings(
-            api_key=settings.upstage_api_key, model="solar-embedding-1-large"
-        )
-
-        # ChromaDB 클라이언트
-        self.client = chromadb.PersistentClient(
-            path=str(self.persist_directory.absolute()),
-            settings=Settings(anonymized_telemetry=False),
-        )
-
-        # 컬렉션 존재 확인
-        try:
-            self.collection = self.client.get_collection(self.collection_name)
-            print(
-                f"[INFO] Loaded collection: {self.collection_name} ({self.collection.count()} docs)"
-            )
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to load collection '{self.collection_name}'. "
-                f"Run 'python tools/legal_data.py' first. Error: {e}"
-            ) from e
-
-        # Vectorstore 초기화
-        self.vectorstore = Chroma(
-            client=self.client,
-            collection_name=self.collection_name,
-            embedding_function=self.embeddings,
-        )
-
-    def get_retriever(
-        self,
-        profile: Optional[dict] = None,
-        search_type: str = "mmr",
-        k: int = 5,
+        *,
+        top_k: int = 5,
         fetch_k: int = 20,
-    ) -> BaseRetriever:
+        persist_directory: Optional[str] = None,
+        collection_name: Optional[str] = None,
+        search_type: str = "similarity",
+    ):
+        """리트리버 초기화"""
+        self.top_k = top_k
+        self.fetch_k = fetch_k
+        self._persist_directory = persist_directory
+        self.collection_name = collection_name or "elderly_legal"
+        self.search_type = search_type  # "similarity" or "mmr"
+
+    @cached_property
+    def _embeddings(self) -> UpstageEmbeddings:
+        """Embeddings 초기화 (lazy)"""
+        return UpstageEmbeddings(
+            api_key=settings.upstage_api_key,
+            model="solar-embedding-1-large",
+        )
+
+    @cached_property
+    def _persist_path(self) -> Path:
+        """ChromaDB 경로 계산 (lazy)"""
+        if self._persist_directory:
+            return Path(self._persist_directory)
+
+        chroma_base = Path(settings.chroma_dir).parent
+        path = chroma_base / "chroma_legal"
+
+        if not path.is_absolute():
+            path = Path(__file__).resolve().parents[2] / path
+
+        return path
+
+    @cached_property
+    def _store(self) -> Chroma:
+        """Vectorstore 초기화 (lazy)"""
+        return Chroma(
+            persist_directory=str(self._persist_path),
+            embedding_function=self._embeddings,
+            collection_name=self.collection_name,
+        )
+
+    @cached_property
+    def _collection(self):
+        """Collection 캐싱 (반복 접근 최적화)"""
+        return self._store._collection
+
+    def invoke(self, payload: Union[Dict[str, Any], str]) -> Sequence[Document]:
         """
-        검색 리트리버 생성
+        검색 실행 (최적화 버전)
 
         Args:
-            profile: 사용자 프로필 (예: {"age": 70, "region": "서울"})
-            search_type: 검색 방식 ("similarity" 또는 "mmr")
-            k: 반환할 문서 개수
-            fetch_k: MMR을 위한 초기 검색 개수
+            payload: 검색 페이로드 (딕셔너리 또는 문자열)
 
         Returns:
-            BaseRetriever 인스턴스
+            검색 결과 Document 리스트
         """
-        search_kwargs = {
-            "k": k,
-        }
+        # 빠른 경로: 타입 체크 최소화
+        if isinstance(payload, str):
+            query = payload
+            where_filter = None
+        else:
+            query = payload.get("query", "")
+            profile = payload.get("profile")
+            where_filter = self._build_filter(profile) if profile else None
 
-        # MMR 설정
-        if search_type == "mmr":
-            search_kwargs["fetch_k"] = fetch_k
+        if not query:
+            return []
 
-        # 프로필 기반 필터링 (선택적)
-        if profile:
-            filter_dict = self._build_filter(profile)
-            if filter_dict:
-                search_kwargs["filter"] = filter_dict
-                print(f"[INFO] Applying filter: {filter_dict}")
+        # Embed query using our embedding function (not ChromaDB's internal one)
+        query_embedding = self._embeddings.embed_query(query)
 
-        retriever = self.vectorstore.as_retriever(
-            search_type=search_type,
-            search_kwargs=search_kwargs,
+        # ChromaDB 직접 쿼리 with pre-computed embedding
+        raw = self._collection.query(
+            query_embeddings=[query_embedding],
+            n_results=self.top_k,
+            include=["documents", "metadatas", "distances"],
+            where=where_filter,
         )
 
-        return retriever
+        # 빠른 결과 파싱 (리스트 컴프리헨션)
+        ids = raw["ids"][0]
+        docs = raw["documents"][0]
+        metas = raw["metadatas"][0]
+        dists = raw["distances"][0]
+
+        # 최적화된 Document 생성
+        return [
+            Document(
+                page_content=text,
+                metadata={
+                    **meta,
+                    "doc_id": doc_id,
+                    "relevance_score": max(0.0, 1.0 - (dist / 2.0)),
+                },
+            )
+            for doc_id, text, meta, dist in zip(ids, docs, metas, dists)
+        ]
 
     def _build_filter(self, profile: dict) -> Optional[dict]:
         """
@@ -132,21 +147,13 @@ class LegalRetriever:
         Returns:
             ChromaDB 필터 딕셔너리 또는 None
         """
-        filter_dict = {}
+        if not profile:
+            return None
 
-        # 나이 기반 필터링 (예시)
         age = profile.get("age")
         if age and age < 60:
-            # 60세 미만이면 장애인복지법도 포함
-            filter_dict["category"] = {"$in": ["복지서비스", "경제지원"]}
+            return {"category": {"$in": ["복지서비스", "경제지원"]}}
 
-        # 지역 기반 필터링 (메타데이터에 region이 있다면)
-        region = profile.get("region")
-        if region:
-            # 지역별 조례가 메타데이터에 있다면
-            pass  # 구현 가능
-
-        # 관심 카테고리 지정 (예시)
         interest = profile.get("interest")
         if interest:
             category_map = {
@@ -156,27 +163,14 @@ class LegalRetriever:
                 "복지": "복지서비스",
             }
             if interest in category_map:
-                filter_dict["category"] = category_map[interest]
+                return {"category": category_map[interest]}
 
-        return filter_dict if filter_dict else None
+        return None
 
-    def search(
-        self,
-        query: str,
-        k: int = 5,
-        profile: Optional[dict] = None,
-    ) -> list:
-        """
-        직접 검색 (디버깅용)
 
-        Args:
-            query: 검색 쿼리
-            k: 반환할 문서 개수
-            profile: 사용자 프로필
+def get_legal_retriever(**kwargs: Any) -> LegalRetrieverPipeline:
+    """Factory for legal retriever pipeline."""
+    return LegalRetrieverPipeline(**kwargs)
 
-        Returns:
-            검색 결과 리스트
-        """
-        retriever = self.get_retriever(profile=profile, k=k)
-        results = retriever.invoke(query)
-        return results
+
+__all__ = ["LegalRetrieverPipeline", "get_legal_retriever"]

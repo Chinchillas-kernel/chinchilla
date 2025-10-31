@@ -31,7 +31,7 @@ def get_all_hooks() -> Dict[str, CategoryHooks]:
         "jobs": JobsHooks(),
         "welfare": WelfareHooks(),  # 팀원이 추가
         "news": NewsHooks(),  # 팀원이 추가
-        # "legal": LegalHooks(),  # 임시 비활성화 (ChromaDB 오류)
+        "legal": LegalHooks(),  # 임시 비활성화 (ChromaDB 오류)
         "scam_defense": ScamDefenseHooks(),  # 금융 사기 탐지 및 대응
     }
 

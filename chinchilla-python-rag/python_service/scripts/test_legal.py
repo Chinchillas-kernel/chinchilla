@@ -11,7 +11,7 @@ print("런타임 준비 완료.")
 req = LegalRequest(
     category="legal",
     payload=LegalPayload(
-        query="계란후라이 만드는법 알려줘",
+        query="재산 분할에 대해 알려줘",
         profile=LegalProfile(age=68, region="서울"),
     ),
 )
