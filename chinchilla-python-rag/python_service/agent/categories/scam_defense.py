@@ -1,7 +1,7 @@
 """Scam defense category hooks."""
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from langchain.schema import Document
 
@@ -12,6 +12,23 @@ from agent.retrievers.scam_retriever import get_scam_defense_retriever
 _BASE_DIR = Path(__file__).resolve().parents[2]
 _REAL_TIME_DATA_PATH = _BASE_DIR / "data" / "scam_defense" / "scam_patterns.json"
 _REAL_TIME_DATA_CACHE: Optional[Dict[str, Any]] = None
+_DANGER_LEVEL_ORDER = {
+    "매우높음": 4,
+    "높음": 3,
+    "중간": 2,
+    "낮음": 1,
+    "정보": 0,
+    "high_risk": 3,
+    "medium_risk": 2,
+    "low_risk": 1,
+}
+
+
+def _digits_only(value: Optional[str]) -> str:
+    """Extract digits from string for loose phone-number matching."""
+    if not value:
+        return ""
+    return "".join(ch for ch in value if ch.isdigit())
 
 
 def _load_real_time_data() -> Dict[str, Any]:
@@ -46,6 +63,7 @@ class ScamDefenseHooks(CategoryHooks):
     """
 
     name: str = "scam_defense"
+    web_search_enabled: bool = False
 
     rewrite_system_prompt: str = (
         "너는 금융사기 탐지 전문가다. "
@@ -147,120 +165,282 @@ class ScamDefenseHooks(CategoryHooks):
     # Real-time scam DB integration                                       #
     # ------------------------------------------------------------------ #
 
-    def get_web_documents(
-        self, query: str, state: Optional[Dict[str, Any]] = None
-    ) -> List[Document]:
-        """Retrieve matches from the real-time scam dataset."""
+    def analyze_realtime_patterns(
+        self, query: str, sender: Optional[str] = None
+    ) -> Tuple[List[Document], Dict[str, Any]]:
+        """Run local pattern analysis to simulate real-time alerts."""
         dataset = _load_real_time_data()
         if not dataset:
-            return []
+            return [], {}
 
         query_text = (query or "").strip()
-        if not query_text:
-            return []
+        query_lower = query_text.lower()
+        sender_text = (sender or "").strip()
+        sender_lower = sender_text.lower()
 
-        matches: List[Document] = []
+        query_digits = _digits_only(query_text)
+        sender_digits = _digits_only(sender_text)
 
-        # 1. Match detailed scam patterns
+        pattern_documents: List[Document] = []
+        scam_matches: List[Dict[str, Any]] = []
+        sender_matches: List[Dict[str, Any]] = []
+        legitimate_matches: List[Dict[str, Any]] = []
+        seen_sender_values = set()
+
         for scam in dataset.get("financial_scams", []):
             patterns = [p for p in scam.get("patterns", []) if p]
             sender_patterns = [p for p in scam.get("sender_patterns", []) if p]
 
-            matched_patterns = [p for p in patterns if p in query_text]
-            matched_senders = [p for p in sender_patterns if p in query_text]
+            matched_patterns = [
+                pattern
+                for pattern in patterns
+                if pattern.lower() in query_lower
+            ]
 
-            if not matched_patterns and not matched_senders:
+            matched_sender_patterns: List[str] = []
+            for candidate in sender_patterns:
+                candidate_lower = candidate.lower()
+                if candidate_lower in query_lower or (
+                    sender_lower and candidate_lower in sender_lower
+                ):
+                    matched_sender_patterns.append(candidate)
+                    if candidate not in seen_sender_values:
+                        sender_matches.append(
+                            {
+                                "value": candidate,
+                                "match_type": "pattern_sender",
+                                "scam_type": scam.get("type"),
+                            }
+                        )
+                        seen_sender_values.add(candidate)
+
+            if not matched_patterns and not matched_sender_patterns:
                 continue
 
+            scam_type = scam.get("type", "알 수 없음")
+            danger_level = scam.get("danger_level", "정보")
+            response_actions = scam.get("response_actions") or []
+            prevention_tips = scam.get("prevention_tips") or []
+
             lines = [
-                f"사기 유형: {scam.get('type', '알 수 없음')}",
-                f"위험도: {scam.get('danger_level', '정보')}",
+                f"사기 유형: {scam_type}",
+                f"위험도: {danger_level}",
             ]
             if matched_patterns:
+                lines.append("")
                 lines.append("매칭된 패턴:")
                 lines.extend(f"- {item}" for item in matched_patterns)
-            if matched_senders:
+            if matched_sender_patterns:
+                lines.append("")
                 lines.append("매칭된 발신자 패턴:")
-                lines.extend(f"- {item}" for item in matched_senders)
+                lines.extend(f"- {item}" for item in matched_sender_patterns)
 
-            response_actions = scam.get("response_actions", []) or []
             if response_actions:
                 lines.append("")
                 lines.append("권장 대응:")
                 lines.extend(f"- {action}" for action in response_actions)
 
-            prevention = scam.get("prevention_tips", []) or []
-            if prevention:
+            if prevention_tips:
                 lines.append("")
                 lines.append("예방 팁:")
-                lines.extend(f"- {tip}" for tip in prevention)
+                lines.extend(f"- {tip}" for tip in prevention_tips)
 
             metadata = {
                 "source": "real_time_alert",
+                "origin": "web_search",
                 "doc_id": scam.get("id"),
-                "scam_type": scam.get("type"),
-                "danger_level": scam.get("danger_level"),
+                "scam_type": scam_type,
+                "danger_level": danger_level,
                 "matched_patterns": matched_patterns,
-                "matched_sender_patterns": matched_senders,
+                "matched_sender_patterns": matched_sender_patterns,
             }
-            matches.append(
+
+            pattern_documents.append(
                 Document(page_content="\n".join(lines).strip(), metadata=metadata)
             )
+            scam_matches.append(
+                {
+                    "id": scam.get("id"),
+                    "scam_type": scam_type,
+                    "danger_level": danger_level,
+                    "matched_patterns": matched_patterns,
+                    "matched_sender_patterns": matched_sender_patterns,
+                }
+            )
 
-        # 2. Match high-risk keywords
+        keyword_matches: Dict[str, List[str]] = {}
         for risk_level, keyword_list in (dataset.get("keywords") or {}).items():
-            matched_keywords = [kw for kw in keyword_list if kw and kw in query_text]
-            if not matched_keywords:
+            hits = [
+                keyword
+                for keyword in keyword_list
+                if keyword and keyword.lower() in query_lower
+            ]
+            if not hits:
                 continue
 
-            metadata = {
-                "source": "real_time_keyword",
-                "risk_level": risk_level,
-                "matched_keywords": matched_keywords,
-            }
+            keyword_matches[risk_level] = hits
             content = (
-                f"위험도 {risk_level} 키워드 매칭: {', '.join(matched_keywords)}\n"
+                f"위험도 {risk_level} 키워드 매칭: {', '.join(hits)}\n"
                 "해당 표현이 포함된 연락은 금융사기 가능성이 높으므로 즉시 대응이 필요합니다."
             )
-            matches.append(Document(page_content=content.strip(), metadata=metadata))
+            metadata = {
+                "source": "real_time_keyword",
+                "origin": "web_search",
+                "risk_level": risk_level,
+                "matched_keywords": hits,
+            }
+            pattern_documents.append(
+                Document(page_content=content.strip(), metadata=metadata)
+            )
 
-        # 3. Match official contacts for legitimacy checks
-        for organization, phone in (dataset.get("legitimate_contacts") or {}).items():
-            if not organization and not phone:
+        legitimate_contacts = dataset.get("legitimate_contacts") or {}
+        for organization, phone in legitimate_contacts.items():
+            matched_on = None
+            normalized_phone = _digits_only(phone)
+
+            if organization and organization.lower() in query_lower:
+                matched_on = "organization"
+            elif normalized_phone and (
+                normalized_phone in query_digits
+                or normalized_phone in sender_digits
+            ):
+                matched_on = "phone"
+
+            if not matched_on:
                 continue
 
-            if (organization and organization in query_text) or (
-                phone and phone in query_text
-            ):
-                metadata = {
-                    "source": "official_contact",
+            legitimate_matches.append(
+                {
                     "organization": organization,
                     "phone": phone,
+                    "matched_on": matched_on,
                 }
-                content = (
-                    f"{organization} 공식 연락처: {phone}\n"
-                    "연락처가 상이하거나 다른 계좌로 송금을 요구하면 즉시 의심하세요."
-                )
-                matches.append(Document(page_content=content.strip(), metadata=metadata))
-
-        # Deduplicate and limit results
-        deduped: List[Document] = []
-        seen = set()
-        for doc in matches:
-            meta = doc.metadata or {}
-            key = (
-                meta.get("source"),
-                meta.get("doc_id"),
-                tuple(meta.get("matched_patterns", [])),
-                tuple(meta.get("matched_keywords", [])),
-                meta.get("organization"),
             )
-            if key in seen:
-                continue
-            seen.add(key)
-            deduped.append(doc)
 
-        return deduped[:5]
+            derived_value = organization if matched_on == "organization" else phone
+            if derived_value and derived_value not in seen_sender_values:
+                sender_matches.append(
+                    {
+                        "value": derived_value,
+                        "match_type": "legitimate_contact",
+                    }
+                )
+                seen_sender_values.add(derived_value)
+
+            content = (
+                f"{organization} 공식 연락처: {phone}\n"
+                "연락처가 상이하거나 다른 계좌로 송금을 요구하면 즉시 의심하세요."
+            )
+            metadata = {
+                "source": "official_contact",
+                "origin": "web_search",
+                "organization": organization,
+                "phone": phone,
+            }
+            pattern_documents.append(
+                Document(page_content=content.strip(), metadata=metadata)
+            )
+
+        highest_level = None
+        highest_score = -1
+        for match in scam_matches:
+            level = match.get("danger_level")
+            score = _DANGER_LEVEL_ORDER.get(level, -1)
+            if score > highest_score:
+                highest_score = score
+                highest_level = level
+
+        for keyword_level in keyword_matches.keys():
+            score = _DANGER_LEVEL_ORDER.get(keyword_level, -1)
+            if score > highest_score:
+                highest_score = score
+                highest_level = keyword_level
+
+        scam_type_candidates = sorted(
+            {
+                match.get("scam_type")
+                for match in scam_matches
+                if match.get("scam_type")
+            }
+        )
+
+        pattern_analysis = {
+            "query": query_text,
+            "sender": sender_text,
+            "scam_matches": scam_matches,
+            "keyword_matches": keyword_matches,
+            "legitimate_contacts": legitimate_matches,
+            "sender_matches": sender_matches,
+            "risk_summary": {
+                "highest_level": highest_level,
+                "score": highest_score,
+                "scam_type_candidates": scam_type_candidates,
+                "keyword_levels": list(keyword_matches.keys()),
+                "is_high_risk": bool(
+                    highest_score >= 3 or "high_risk" in keyword_matches
+                ),
+            },
+        }
+
+        return pattern_documents, pattern_analysis
+
+    def _format_pattern_analysis(self, pattern_analysis: Dict[str, Any]) -> str:
+        """Render realtime pattern analysis as structured text."""
+        if not pattern_analysis:
+            return "매칭된 패턴 없음"
+
+        lines: List[str] = []
+        risk_summary = pattern_analysis.get("risk_summary") or {}
+        highest_level = risk_summary.get("highest_level")
+        if highest_level:
+            lines.append(f"- 추정 위험도: {highest_level}")
+        elif risk_summary.get("is_high_risk"):
+            lines.append("- 추정 위험도: 높음")
+
+        scam_matches = pattern_analysis.get("scam_matches") or []
+        if scam_matches:
+            lines.append("매칭된 사기 유형:")
+            for match in scam_matches:
+                scam_type = match.get("scam_type", "불명")
+                danger = match.get("danger_level", "정보")
+                entry = f"- {scam_type} (위험도 {danger})"
+                patterns = match.get("matched_patterns") or []
+                if patterns:
+                    entry += f" | 패턴: {', '.join(patterns)}"
+                sender_patterns = match.get("matched_sender_patterns") or []
+                if sender_patterns:
+                    entry += f" | 발신자: {', '.join(sender_patterns)}"
+                lines.append(entry)
+
+        keyword_matches = pattern_analysis.get("keyword_matches") or {}
+        if keyword_matches:
+            lines.append("위험 키워드 매칭:")
+            for risk_level, keywords in keyword_matches.items():
+                lines.append(f"- {risk_level}: {', '.join(keywords)}")
+
+        legitimate_contacts = pattern_analysis.get("legitimate_contacts") or []
+        if legitimate_contacts:
+            lines.append("공식 연락처 일치:")
+            for contact in legitimate_contacts:
+                org = contact.get("organization")
+                phone = contact.get("phone")
+                matched_on = contact.get("matched_on")
+                lines.append(f"- {org} ({phone}) - {matched_on} 일치")
+
+        return "\n".join(lines) if lines else "매칭된 패턴 없음"
+
+    def get_web_documents(
+        self, query: str, state: Optional[Dict[str, Any]] = None
+    ) -> List[Document]:
+        """Retrieve matches from the real-time scam dataset."""
+        sender = None
+        if state and isinstance(state, dict):
+            sender = state.get("sender")
+
+        documents, _ = self.analyze_realtime_patterns(
+            query=query, sender=sender
+        )
+        return documents[:5]
     
     # ===== 멀티 에이전트 프롬프트 ===== #
     
@@ -358,17 +538,22 @@ class ScamDefenseHooks(CategoryHooks):
         return response.content.strip()
 
     def _run_analysis(
-        self, 
-        query: str, 
-        rag_context: str, 
-        web_context: str
+        self,
+        query: str,
+        rag_context: str,
+        web_context: str,
+        pattern_analysis: Dict[str, Any],
     ) -> str:
         """
         Agent 1: 분석 단계
         의심 문자 종합 분석
         """
+        pattern_summary = self._format_pattern_analysis(pattern_analysis)
+        sender_text = pattern_analysis.get("sender") or "제공되지 않음"
         user_content = (
             f"=== 사용자 메시지 ===\n{query}\n\n"
+            f"=== 발신자 정보 ===\n{sender_text}\n\n"
+            f"=== 실시간 패턴 분석 ===\n{pattern_summary}\n\n"
             f"=== Knowledge Base (RAG 검색) ===\n{rag_context}\n\n"
             f"=== 실시간 사기 DB (웹 검색) ===\n{web_context}\n\n"
             "위 정보를 종합하여 분석 결과를 출력 형식에 맞춰 작성하라."
@@ -377,18 +562,21 @@ class ScamDefenseHooks(CategoryHooks):
 
     def _run_verdict(
         self, 
-        query: str, 
+        query: str,
         rag_context: str,
         web_context: str,
-        analysis: str
+        analysis: str,
+        pattern_analysis: Dict[str, Any],
     ) -> Dict[str, Any]:
         """
         Agent 2: 판단 단계
         사기 여부 판별 및 위험도 평가
         """
+        pattern_summary = self._format_pattern_analysis(pattern_analysis)
         user_content = (
             f"=== 사용자 메시지 ===\n{query}\n\n"
             f"=== 분석 Agent 결과 ===\n{analysis}\n\n"
+            f"=== 실시간 패턴 분석 ===\n{pattern_summary}\n\n"
             f"=== Knowledge Base (RAG 검색) ===\n{rag_context}\n\n"
             f"=== 실시간 사기 DB (웹 검색) ===\n{web_context}\n\n"
             "위 지침의 JSON 형식으로만 응답하라. JSON 외의 텍스트는 출력하지 말라."
@@ -432,7 +620,8 @@ class ScamDefenseHooks(CategoryHooks):
         rag_context: str,
         web_context: str,
         analysis: str,
-        verdict: Dict[str, Any]
+        verdict: Dict[str, Any],
+        pattern_analysis: Dict[str, Any],
     ) -> str:
         """
         Agent 3: 조언 단계
@@ -446,11 +635,13 @@ class ScamDefenseHooks(CategoryHooks):
             f"즉시 행동: {', '.join(verdict.get('immediate_actions', []) or [])}\n"
             f"금지 행동: {', '.join(verdict.get('do_not_do', []) or [])}"
         )
+        pattern_summary = self._format_pattern_analysis(pattern_analysis)
         
         user_content = (
             f"=== 사용자 메시지 ===\n{query}\n\n"
             f"=== 분석 Agent 결과 ===\n{analysis}\n\n"
             f"=== 판단 Agent 결과 ===\n{verdict_text}\n\n"
+            f"=== 실시간 패턴 분석 ===\n{pattern_summary}\n\n"
             f"=== Knowledge Base (RAG 검색) ===\n{rag_context}\n\n"
             f"=== 실시간 사기 DB (웹 검색) ===\n{web_context}\n\n"
             "위 정보를 바탕으로 최종 대응 가이드를 counsel_system_prompt의 출력 형식에 맞춰 작성하라.\n"
@@ -458,7 +649,7 @@ class ScamDefenseHooks(CategoryHooks):
         )
         return self._call_llm(self.counsel_system_prompt, user_content)
 
-    def generate_answer(self, query, documents, web_documents):
+    def generate_answer(self, query, documents, web_documents, state):
         """
         Override: 멀티 에이전트 파이프라인으로 답변 생성
         
@@ -475,6 +666,20 @@ class ScamDefenseHooks(CategoryHooks):
         print(f"[INFO] Query: {query[:100]}...")
         
         # 문서 컨텍스트 준비
+        documents = list(documents or [])
+        web_documents = list(web_documents or [])
+        pattern_analysis: Dict[str, Any] = {}
+        sender = None
+        if state and isinstance(state, dict):
+            pattern_analysis = state.get("pattern_analysis") or {}
+            sender = state.get("sender")
+        if not pattern_analysis:
+            extra_docs, pattern_analysis = self.analyze_realtime_patterns(
+                query=query, sender=sender
+            )
+            if extra_docs:
+                web_documents.extend(extra_docs)
+
         all_docs = documents + web_documents
         rag_context = self.format_documents(documents)
         web_context = self.format_documents(web_documents) if web_documents else "없음"
@@ -483,16 +688,20 @@ class ScamDefenseHooks(CategoryHooks):
         
         # 1. 분석 Agent
         print(f"[INFO] Agent 1: 분석 시작...")
-        analysis = self._run_analysis(query, rag_context, web_context)
+        analysis = self._run_analysis(
+            query, rag_context, web_context, pattern_analysis
+        )
         
         # 2. 판단 Agent
         print(f"[INFO] Agent 2: 판단 시작...")
-        verdict = self._run_verdict(query, rag_context, web_context, analysis)
+        verdict = self._run_verdict(
+            query, rag_context, web_context, analysis, pattern_analysis
+        )
         
         # 3. 조언 Agent
         print(f"[INFO] Agent 3: 조언 생성 시작...")
         counsel = self._run_counsel(
-            query, rag_context, web_context, analysis, verdict
+            query, rag_context, web_context, analysis, verdict, pattern_analysis
         )
         
         # 출처 준비
@@ -505,6 +714,7 @@ class ScamDefenseHooks(CategoryHooks):
             "sources": sources,
             "analysis": analysis,
             "verdict": verdict,
+            "pattern_analysis": pattern_analysis,
         }
 
 
