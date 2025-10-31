@@ -57,9 +57,16 @@ class ScamRetrieverWrapper(BaseRetriever):
         )
 
         # 관련도 점수를 메타데이터에 주입
-        final_docs = []
-        for doc, score in results_with_scores:
-            doc.metadata["relevance_score"] = score
+        final_docs: List[Document] = []
+        for doc, distance in results_with_scores:
+            metadata = dict(doc.metadata or {})
+            distance_val = float(distance)
+            metadata["distance"] = distance_val
+            # Convert Chroma distance (smaller is better) into [0,1] relevance score
+            relevance = 1.0 - (distance_val / 2.0)
+            metadata["relevance_score"] = max(0.0, min(1.0, relevance))
+            metadata.setdefault("origin", "vector_db")
+            doc.metadata = metadata
             final_docs.append(doc)
 
         return final_docs
