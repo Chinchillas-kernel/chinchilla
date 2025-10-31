@@ -43,6 +43,10 @@ def dispatch(
     # Add profile if exists (for jobs category)
     if hasattr(req.payload, "profile"):
         state["profile"] = req.payload.profile.model_dump()
+    
+    # Add sender info if exists (for scam_defense category)
+    if hasattr(req.payload, "sender") and req.payload.sender:
+        state["sender"] = req.payload.sender
 
     # Execute workflow
     try:
