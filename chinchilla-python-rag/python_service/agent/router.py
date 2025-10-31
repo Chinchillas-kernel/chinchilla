@@ -42,7 +42,6 @@ def dispatch(
     }
 
     # Add profile if exists (for jobs category)
-    # Add profile if exists (for jobs category)
     profile = getattr(req.payload, "profile", None)
     if profile is not None:
         if isinstance(profile, BaseModel):
