@@ -2,6 +2,7 @@
 """Local test script for news category (without FastAPI server)."""
 import sys
 import os
+import time
 from pathlib import Path
 
 # Add parent directory to path
@@ -54,7 +55,7 @@ def test_news_full_workflow():
     req = NewsRequest(
         category="news",
         payload=NewsPayload(
-            query="어르신이 행복한 해남",
+            query="최근 연금 뉴스 알려줘",
             category="복지",
         ),
     )
@@ -62,7 +63,10 @@ def test_news_full_workflow():
 
     # Dispatch request
     print("\n Dispatching request ... ")
+    start_time = time.time()
     response = dispatch(req, graphs=graphs, hooks=hooks)
+    end_time = time.time()
+    duration = end_time - start_time
     print("Workflow complete")
 
     # Display results
@@ -72,6 +76,7 @@ def test_news_full_workflow():
     print(f"\nAnswer:\n{response.answer}")
     print(f"\nSources: {len(response.sources)} documents")
     print(f"\nMetadata: {response.metadata}")
+    print(f"\n답변 생성 시간: {duration:.2f}초")
 
 
 if __name__ == "__main__":

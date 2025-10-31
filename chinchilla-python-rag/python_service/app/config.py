@@ -1,5 +1,4 @@
 # app/config.py
-from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import AliasChoices, Field
 
@@ -27,9 +26,17 @@ class Settings(BaseSettings):
     )
 
     # 선택 항목
-    langsmith_api_key: Optional[str] = Field(
+    langsmith_api_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("LANGSMITH_API_KEY", "langsmith_api_key"),
+    )
+    langchain_tracing_v2: bool | None = Field(
+        default=True,
+        validation_alias=AliasChoices("LANGCHAIN_TRACING_V2", "langchain_tracing_v2"),
+    )
+    langchain_project: str | None = Field(
+        default="chinchilla",
+        validation_alias=AliasChoices("LANGCHAIN_PROJECT", "langchain_project"),
     )
 
     # 기타 설정
