@@ -6,14 +6,13 @@
 from typing import Any
 
 from agent.categories.base import CategoryHooks
-from agent.retrievers.legal_retriever import LegalRetriever
+from agent.retrievers.legal_retriever import get_legal_retriever
 
 
 class LegalHooks(CategoryHooks):
     """노인 법률 상담 카테고리를 위한 훅"""
 
     name: str = "legal"
-    retriever_factory: Any = None
 
     # 쿼리 재작성 시스템 프롬프트
     rewrite_system_prompt: str = (
@@ -72,36 +71,18 @@ class LegalHooks(CategoryHooks):
     min_relevance_threshold: float = 0.3  # 법률은 높은 정확도 필요
     fetch_k: int = 20  # MMR을 위한 초기 검색 개수
 
-    def __init__(self, **data: Any):
-        """Initialize the retriever factory for this category."""
-        super().__init__(**data)
-        self.retriever_factory = LegalRetriever()
-
-    def get_retriever(self, payload: dict = None) -> Any:
+    def get_retriever(self) -> Any:
         """
         법률 문서 검색 리트리버 반환
 
-        Args:
-            payload: 요청 페이로드 (query, profile 포함)
-
         Returns:
-            LangChain BaseRetriever 인스턴스
+            LegalRetrieverPipeline with .invoke(dict) method
         """
-        if payload is None:
-            payload = {}
-
-        # 프로필 추출
-        profile = payload.get("profile")
-
-        # 리트리버 생성
-        retriever = self.retriever_factory.get_retriever(
-            profile=profile,
+        return get_legal_retriever(
+            top_k=self.top_k,
             search_type="mmr",  # 다양성을 위한 MMR
-            k=self.top_k,
             fetch_k=self.fetch_k,
         )
-
-        return retriever
 
 
 __all__ = ["LegalHooks"]

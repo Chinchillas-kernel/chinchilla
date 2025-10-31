@@ -58,7 +58,8 @@ coverage.xml
 *.log
 *.sqlite
 *.db
-data/chroma_welfare/
+data/chroma*/
+data/chroma_*/
 chroma_store/
 chroma.sqlite3
 
