@@ -80,33 +80,45 @@ class WelfareRetrieverPipeline:
         if not query:
             raise ValueError("query is required for welfare retrieval")
 
-        search_kwargs = dict(self.search_kwargs)
-        # Ensure we always request at least one document
-        search_kwargs["k"] = max(1, int(search_kwargs.get("k", self.top_k)))
+        search_params = dict(self.search_kwargs)
+        k = int(search_params.pop("k", self.top_k) or self.top_k)
+
+        allowed = {"where", "where_document"}
+        extra_params = {k_: v for k_, v in search_params.items() if k_ in allowed}
+
+        collection = self._store._collection
 
         try:
-            results = self._store.similarity_search_with_relevance_scores(
-                query,
-                **search_kwargs,
+            raw = collection.query(
+                query_texts=[query],
+                n_results=k,
+                include=["documents", "metadatas", "distances", "ids"],
+                **extra_params,
             )
-        except TypeError:
-            # Older langchain-chroma versions expect `filter` instead of `where` etc.
-            results = self._store.similarity_search_with_relevance_scores(
-                query,
-                search_kwargs["k"],
-                **{k: v for k, v in search_kwargs.items() if k != "k"},
-            )
+        except Exception:
+            fallback = self._store.similarity_search_with_relevance_scores(query, k=k)
+            results: List[Document] = []
+            for doc, score in fallback:
+                metadata = dict(doc.metadata or {})
+                metadata.setdefault("doc_id", metadata.get("id") or metadata.get("uuid"))
+                metadata["relevance_score"] = float(score)
+                results.append(Document(page_content=doc.page_content, metadata=metadata))
+            return results
 
-        documents: List[Document] = []
-        for doc, score in results:
-            metadata = dict(doc.metadata or {})
-            metadata.setdefault("doc_id", metadata.get("id") or metadata.get("uuid"))
-            metadata["relevance_score"] = float(score)
-            documents.append(
-                Document(page_content=doc.page_content, metadata=metadata)
-            )
+        ids = raw.get("ids", [[]])[0] or []
+        documents = raw.get("documents", [[]])[0] or []
+        metadatas = raw.get("metadatas", [[]])[0] or []
+        distances = raw.get("distances", [[]])[0] or []
 
-        return documents
+        results: List[Document] = []
+        for doc_id, text, metadata, distance in zip(ids, documents, metadatas, distances):
+            metadata = dict(metadata or {})
+            metadata["doc_id"] = doc_id
+            distance = float(distance)
+            metadata["relevance_score"] = max(0.0, 1.0 - (distance / 2.0))
+            results.append(Document(page_content=text, metadata=metadata))
+
+        return results
 
 
 def get_welfare_retriever(**kwargs: Any) -> WelfareRetrieverPipeline:
