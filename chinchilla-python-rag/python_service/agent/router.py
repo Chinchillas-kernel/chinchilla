@@ -70,6 +70,10 @@ def dispatch(
         }
         if result.get("retrieval_stats") is not None:
             metadata["retrieval_stats"] = result["retrieval_stats"]
+        for key in ("analysis", "verdict", "pattern_analysis"):
+            value = result.get(key)
+            if value:
+                metadata[key] = value
 
         return AgentResponse(
             answer=result.get("answer", ""),
