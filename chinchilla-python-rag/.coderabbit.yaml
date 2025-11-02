@@ -1,0 +1,49 @@
+# CodeRabbit 설정 - Chinchilla 프로젝트
+language: ko
+
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - dev
+      - develop
+      - master
+      - "feature/**"
+      - "hotfix/**"
+      - "release/**"
+  
+  profile: chill
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  request_changes_workflow: false
+  
+  path_filters:
+    - "**/*.java"
+    - "**/*.py"
+    - "**/*.gradle"
+    - "**/*.yml"
+    - "**/*.yaml"
+    - "**/*.md"
+  
+  path_ignore:
+    - "**/node_modules/**"
+    - "**/build/**"
+    - "**/__pycache__/**"
+    - "**/data/chroma_*/**"
+    - "**/*.sqlite3"
+  
+  path_instructions:
+    - path: "**/*.py"
+      instructions: "Python 코드 리뷰: PEP 8, 타입 힌팅, Docstring"
+    - path: "**/*.java"
+      instructions: "Java 코드 리뷰: Spring Boot 베스트 프랙티스"
+
+chat:
+  auto_reply: true
+
+early_access: false
+enable_free_tier: true
