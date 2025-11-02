@@ -1,4 +1,5 @@
 """Agent router: dispatch requests to category-specific workflows."""
+
 from typing import Dict, Any
 
 from app.schemas import AgentRequest, AgentResponse
@@ -41,12 +42,21 @@ def dispatch(
     }
 
     # Add profile if exists (for jobs category)
-    if hasattr(req.payload, "profile"):
-        state["profile"] = req.payload.profile.model_dump()
-    
-    # Add sender info if exists (for scam_defense category)
-    if hasattr(req.payload, "sender") and req.payload.sender:
-        state["sender"] = req.payload.sender
+
+    profile = getattr(req.payload, "profile", None)
+    if profile is not None:
+        if isinstance(profile, BaseModel):
+            state["profile"] = profile.model_dump()
+        elif isinstance(profile, dict):
+            state["profile"] = profile
+        else:
+            # dict로 강제 변환을 시도 (필요 시 JobsProfile(**profile)로 캐스팅)
+            try:
+                state["profile"] = dict(profile)
+            except Exception:
+                # 마지막 방어선: 문자열 등은 무시
+                pass
+
 
     # Execute workflow
     try:
