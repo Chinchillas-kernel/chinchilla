@@ -43,7 +43,7 @@ class WelfareRetrieverPipeline:
     def _embeddings(self) -> UpstageEmbeddings:
         return UpstageEmbeddings(
             api_key=settings.upstage_api_key,
-            model="embedding-query",
+            model="solar-embedding-1-large",
         )
 
     @cached_property
@@ -62,7 +62,7 @@ class WelfareRetrieverPipeline:
         return Chroma(
             persist_directory=str(self._persist_path),
             embedding_function=self._embeddings,
-            collection_name=self.collection_name or "welfare_programs",
+            collection_name=self.collection_name or "elderly_welfare_services",
         )
 
     def invoke(
@@ -113,7 +113,9 @@ class WelfareRetrieverPipeline:
         results: List[Document] = []
         for doc_id, text, metadata, distance in zip(ids, documents, metadatas, distances):
             metadata = dict(metadata or {})
-            metadata["doc_id"] = doc_id
+            metadata.setdefault("chunk_id", doc_id)
+            metadata.setdefault("record_id", metadata.get("doc_id"))
+            metadata.setdefault("source_kind", metadata.get("source"))
             distance = float(distance)
             metadata["relevance_score"] = max(0.0, 1.0 - (distance / 2.0))
             results.append(Document(page_content=text, metadata=metadata))
