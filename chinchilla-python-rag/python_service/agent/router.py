@@ -1,7 +1,7 @@
 """Agent router: dispatch requests to category-specific workflows."""
 
 from typing import Dict, Any
-
+from pydantic import BaseModel
 from app.schemas import AgentRequest, AgentResponse
 
 
@@ -56,7 +56,6 @@ def dispatch(
             except Exception:
                 # 마지막 방어선: 문자열 등은 무시
                 pass
-
 
     # Execute workflow
     try:
