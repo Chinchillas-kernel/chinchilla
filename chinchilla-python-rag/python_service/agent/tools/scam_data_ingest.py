@@ -18,7 +18,9 @@ from langchain_upstage import UpstageEmbeddings
 try:
     from app.config import settings
 except Exception as exc:  # pragma: no cover - configuration guard
-    raise RuntimeError("Failed to import app.config.settings. Check PYTHONPATH.") from exc
+    raise RuntimeError(
+        "Failed to import app.config.settings. Check PYTHONPATH."
+    ) from exc
 
 
 DEFAULT_DATA_DIR = Path("data/scam_defense")
@@ -27,6 +29,7 @@ DEFAULT_COLLECTION = "scam_defense"
 
 
 def _clean_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Clean metadata by removing empty values and normalizing types."""
     cleaned: Dict[str, Any] = {}
     for key, value in metadata.items():
         if value in (None, "", []):
@@ -42,9 +45,14 @@ def _clean_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
 
 def _load_json(path: Path) -> Any:
     if not path.exists():
+        print(f"[WARN] JSON file not found: {path}")
         return None
-    text = path.read_text(encoding="utf-8")
-    return json.loads(text)
+    try:
+        text = path.read_text(encoding="utf-8")
+        return json.loads(text)
+    except Exception as e:
+        print(f"[ERROR] Failed to read JSON file {path}: {e}")
+        return None
 
 
 def _collect_knowledge_base(path: Path) -> Iterable[Dict[str, Any]]:
@@ -52,26 +60,32 @@ def _collect_knowledge_base(path: Path) -> Iterable[Dict[str, Any]]:
     if not payload:
         return []
 
-    if isinstance(payload, dict) and isinstance(payload.get("scam_knowledge_base"), list):
+    if isinstance(payload, dict) and isinstance(
+        payload.get("scam_knowledge_base"), list
+    ):
         items = payload["scam_knowledge_base"]
     elif isinstance(payload, list):
         items = payload
     else:
+        print(f"[WARN] Unexpected knowledge base format in {path}")
         return []
 
     records: List[Dict[str, Any]] = []
     for index, item in enumerate(items):
         if not isinstance(item, dict):
             continue
+
         doc_id = str(item.get("id") or f"kb_{index:04d}")
         title = (item.get("title") or "").strip()
         category = (item.get("category") or "").strip()
         danger_level = (item.get("danger_level") or "").strip() or "정보"
         scam_type = (item.get("type") or "").strip()
         content = (item.get("content") or "").strip()
+
         if not content:
             continue
 
+        # Format content with metadata headers
         lines = [
             f"제목: {title or '제목 없음'}",
             f"카테고리: {category or '정보'}",
@@ -97,10 +111,12 @@ def _collect_knowledge_base(path: Path) -> Iterable[Dict[str, Any]]:
                 ),
             }
         )
+    print(f"[INFO] Collected {len(records)} knowledge base records from {path}")
     return records
 
 
 def _collect_patterns(path: Path) -> Iterable[Dict[str, Any]]:
+    """Collect scam pattern data."""
     payload = _load_json(path)
     if not isinstance(payload, dict):
         return []
@@ -177,7 +193,13 @@ def _collect_patterns(path: Path) -> Iterable[Dict[str, Any]]:
     for organization, phone in (payload.get("legitimate_contacts") or {}).items():
         if not organization and not phone:
             continue
-        doc_id = f"contact_{organization or len(records):04d}"
+        if organization:
+            doc_id = f"contact_{organization}"
+        else:
+            doc_id = f"contact_{contact_index:04d}"
+
+        contact_index += 1
+
         records.append(
             {
                 "id": doc_id,
@@ -192,11 +214,12 @@ def _collect_patterns(path: Path) -> Iterable[Dict[str, Any]]:
                 ),
             }
         )
-
+    print(f"[INFO] Collected {len(records)} scam pattern records from {path}")
     return records
 
 
 def _collect_csv(path: Path) -> Iterable[Dict[str, Any]]:
+    """Collect data from CSV files."""
     if not path.exists():
         return []
 
@@ -245,14 +268,36 @@ def collect_scam_data(
     *,
     include_csv: bool = True,
 ) -> List[Dict[str, Any]]:
+    """Collect all scam defense data from the specified directory.
+
+    Args:
+        data_dir: Directory containing scam defense data files
+        include_csv: Whether to include CSV files in collection
+
+    Returns:
+        List of records with id, content, and metadata."""
+
+    print(f"\n Collecting scam-defense data from: {data_dir}")
     records: List[Dict[str, Any]] = []
-    records.extend(_collect_knowledge_base(data_dir / "scam_knowledge_base.json"))
-    records.extend(_collect_patterns(data_dir / "scam_patterns.json"))
+
+    # Collect from JSON files
+    kb_path = data_dir / "scam_knowledge_base.json"
+    records.extend(_collect_knowledge_base(kb_path))
+
+    patterns_path = data_dir / "scam_patterns.json"
+    records.extend(_collect_patterns(patterns_path))
 
     if include_csv:
-        for csv_path in sorted(data_dir.glob("*.csv")):
-            records.extend(_collect_csv(csv_path))
 
+        csv_files = sorted(data_dir.glob("*.csv"))
+        if not csv_files:
+            print(f"[INFO] Found {len(csv_files)} CSV file(s)")
+            for csv_path in csv_files:
+                records.extend(_collect_csv(csv_path))
+        else:
+            print("[INFO] No CSV files found")
+
+    print(f"\n✓ Total collected: {len(records)} records")
     return records
 
 
@@ -272,6 +317,7 @@ def build_scam_vectorstore(
     if not data_dir.exists():
         raise FileNotFoundError(f"Scam-defense data directory not found: {data_dir}")
 
+    print("\n" + "=" * 70)
     print("📚 Scam Defense Vectorstore Builder")
     print(f"- data_dir   : {data_dir}")
     print(f"- db_path    : {db_path}")
@@ -284,10 +330,12 @@ def build_scam_vectorstore(
         print("- CSV files  : skipped")
     if reset:
         print("- reset mode : enabled")
+    print("=" * 70)
 
     raw_records = collect_scam_data(data_dir, include_csv=include_csv)
     if limit:
         raw_records = raw_records[:limit]
+        print(f"[INFO] Limiting to {limit} records")
     if not raw_records:
         print("[WARN] No scam-defense data found. Aborting.")
         return
@@ -309,7 +357,7 @@ def build_scam_vectorstore(
     if not chunks:
         print("[WARN] No chunks generated. Aborting.")
         return
-    print(f"[INFO] Generated {len(chunks)} chunks")
+    print(f"[INFO] Generated {len(chunks)} chunks from {len(raw_records)} records")
 
     api_key = os.getenv("UPSTAGE_API_KEY") or settings.upstage_api_key
     if not api_key:
@@ -325,37 +373,88 @@ def build_scam_vectorstore(
             client.delete_collection(collection_name)
             print(f"[INFO] Deleted existing collection: {collection_name}")
         except Exception:
-            pass
+            print(f"[INFO] No existing collection to delete")
 
     collection = client.get_or_create_collection(collection_name)
+    print(f"[INFO] Using collection: {collection_name}")
+
     existing_ids = [chunk["id"] for chunk in chunks]
     try:
         collection.delete(ids=existing_ids)
     except Exception:
         pass
 
-    for chunk in chunks:
-        embedding = embeddings.embed_query(chunk["content"])
-        collection.add(
-            ids=[chunk["id"]],
-            embeddings=[embedding],
-            documents=[chunk["content"]],
-            metadatas=[chunk["metadata"]],
-        )
+    for i in range(0, len(chunks), batch_size):
+        batch = chunks[i : i + batch_size]
+        batch_num = i // batch_size + 1
+        total_batches = (len(chunks) + batch_size - 1) // batch_size
+        print(f"[INFO] Indexing batch {batch_num}/{total_batches}...", end="\r")
+
+        for chunk in batch:
+            try:
+                embedding = embeddings.embed_query(chunk["content"])
+                collection.add(
+                    ids=[chunk["id"]],
+                    embeddings=[embedding],
+                    documents=[chunk["content"]],
+                    metadatas=[chunk["metadata"]],
+                )
+            except Exception as exc:
+                print(f"[ERROR] Failed to index chunk {chunk['id']}: {exc}")
 
     print(f"✓ Indexed {len(chunks)} scam-defense chunks")
+    print("\n" + "=" * 70)
+    print("✅ Vector store build complete!")
+    print("=" * 70)
+
+
+# ============================================================================
+# CLI Interface
+# ============================================================================
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Build scam-defense Chroma vector store.")
-    parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR, help="Directory with scam-defense data files")
-    parser.add_argument("--db-path", type=Path, default=DEFAULT_DB_PATH, help="Chroma persistence directory")
-    parser.add_argument("--collection", type=str, default=DEFAULT_COLLECTION, help="Chroma collection name")
-    parser.add_argument("--chunk-size", type=int, default=500, help="Chunk size for text splitting")
-    parser.add_argument("--chunk-overlap", type=int, default=50, help="Chunk overlap for text splitting")
-    parser.add_argument("--limit", type=int, default=0, help="Limit number of source records (0 for all)")
-    parser.add_argument("--skip-csv", action="store_true", help="Skip ingesting supplementary CSV files")
-    parser.add_argument("--reset", action="store_true", help="Delete existing collection before ingesting")
+    parser = argparse.ArgumentParser(
+        description="Build scam-defense Chroma vector store."
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=DEFAULT_DATA_DIR,
+        help="Directory with scam-defense data files",
+    )
+    parser.add_argument(
+        "--db-path",
+        type=Path,
+        default=DEFAULT_DB_PATH,
+        help="Chroma persistence directory",
+    )
+    parser.add_argument(
+        "--collection",
+        type=str,
+        default=DEFAULT_COLLECTION,
+        help="Chroma collection name",
+    )
+    parser.add_argument(
+        "--chunk-size", type=int, default=500, help="Chunk size for text splitting"
+    )
+    parser.add_argument(
+        "--chunk-overlap", type=int, default=50, help="Chunk overlap for text splitting"
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="Limit number of source records (0 for all)",
+    )
+    parser.add_argument(
+        "--skip-csv", action="store_true", help="Skip ingesting supplementary CSV files"
+    )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Delete existing collection before ingesting",
+    )
     return parser
 
 
@@ -374,10 +473,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             limit=args.limit,
             reset=args.reset,
         )
+        return 0
     except Exception as exc:
         print(f"[ERROR] {exc}")
+        import traceback
+
+        traceback.print_exc()
         return 1
-    return 0
 
 
 if __name__ == "__main__":  # pragma: no cover
