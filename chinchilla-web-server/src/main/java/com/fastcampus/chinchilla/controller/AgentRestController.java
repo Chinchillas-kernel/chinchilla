@@ -1,5 +1,6 @@
 package com.fastcampus.chinchilla.controller;
 
+import com.fastcampus.chinchilla.config.CommonUtil;
 import com.fastcampus.chinchilla.dto.AgentRequest;
 import com.fastcampus.chinchilla.dto.AgentResponse;
 import com.fastcampus.chinchilla.dto.JobsPayload;
@@ -31,7 +32,8 @@ public class AgentRestController {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    
+    private final CommonUtil commonUtil;
+
     @Value("${agent.api.url:http://localhost:8000}")
     private String agentApiUrl;
 
@@ -74,6 +76,9 @@ public class AgentRestController {
 
             try {
                 AgentResponse agentResponse = objectMapper.readValue(responseBody, AgentResponse.class);
+                String md = agentResponse.getAnswer();
+                String html = (md == null || md.isBlank()) ? "" : commonUtil.markdown(md);
+                agentResponse.setAnswerHtml(html);
                 return ResponseEntity.status(response.getStatusCode()).body(agentResponse);
             } catch (JsonProcessingException e) {
                 log.info(
