@@ -7,6 +7,7 @@ import argparse
 import csv
 import json
 import os
+import shutil
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
@@ -26,6 +27,7 @@ except Exception as exc:  # pragma: no cover - configuration guard
 DEFAULT_DATA_DIR = Path("data/scam_defense")
 DEFAULT_DB_PATH = Path("data/chroma_scam_defense")
 DEFAULT_COLLECTION = "scam_defense"
+DEFAULT_BATCH_SIZE = 16
 
 
 def _clean_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
@@ -190,15 +192,15 @@ def _collect_patterns(path: Path) -> Iterable[Dict[str, Any]]:
             }
         )
 
+    contact_index = 0
     for organization, phone in (payload.get("legitimate_contacts") or {}).items():
         if not organization and not phone:
             continue
         if organization:
             doc_id = f"contact_{organization}"
         else:
-            doc_id = f"contact_{contact_index:04d}"
-
-        contact_index += 1
+            doc_id = f"contact_{contact_index:idx:04d}"
+            contact_index += 1
 
         records.append(
             {
@@ -216,6 +218,19 @@ def _collect_patterns(path: Path) -> Iterable[Dict[str, Any]]:
         )
     print(f"[INFO] Collected {len(records)} scam pattern records from {path}")
     return records
+
+
+def _clear_chroma_persistence(db_path: Path) -> None:
+    """Remove the Chroma persistence directory to recover from corruption."""
+    if not db_path.exists():
+        return
+    try:
+        shutil.rmtree(db_path)
+        print(f"[INFO] Cleared Chroma persistence directory: {db_path}")
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to clear Chroma persistence directory {db_path}: {exc}"
+        ) from exc
 
 
 def _collect_csv(path: Path) -> Iterable[Dict[str, Any]]:
@@ -290,7 +305,7 @@ def collect_scam_data(
     if include_csv:
 
         csv_files = sorted(data_dir.glob("*.csv"))
-        if not csv_files:
+        if csv_files:
             print(f"[INFO] Found {len(csv_files)} CSV file(s)")
             for csv_path in csv_files:
                 records.extend(_collect_csv(csv_path))
@@ -309,6 +324,7 @@ def build_scam_vectorstore(
     include_csv: bool = True,
     chunk_size: int = 500,
     chunk_overlap: int = 50,
+    batch_size: int = DEFAULT_BATCH_SIZE,
     limit: int = 0,
     reset: bool = False,
 ) -> None:
@@ -328,6 +344,7 @@ def build_scam_vectorstore(
         print(f"- limit      : {limit}")
     if not include_csv:
         print("- CSV files  : skipped")
+    print(f"- batch size : {batch_size}")
     if reset:
         print("- reset mode : enabled")
     print("=" * 70)
@@ -359,23 +376,51 @@ def build_scam_vectorstore(
         return
     print(f"[INFO] Generated {len(chunks)} chunks from {len(raw_records)} records")
 
+    if batch_size <= 0:
+        raise ValueError("batch_size must be greater than zero.")
+
     api_key = os.getenv("UPSTAGE_API_KEY") or settings.upstage_api_key
     if not api_key:
         raise RuntimeError("UPSTAGE_API_KEY is not configured.")
 
     embeddings = UpstageEmbeddings(api_key=api_key, model="solar-embedding-1-large")
+
+    chroma_settings = Settings(anonymized_telemetry=False)
     client = chromadb.PersistentClient(
         path=str(db_path),
-        settings=Settings(anonymized_telemetry=False),
+        settings=chroma_settings,
     )
+
     if reset:
         try:
             client.delete_collection(collection_name)
             print(f"[INFO] Deleted existing collection: {collection_name}")
-        except Exception:
-            print(f"[INFO] No existing collection to delete")
+        except Exception as exc:
+            print(
+                f"[WARN] Unable to delete collection via Chroma API ({exc}). "
+                "Clearing persistence directory instead."
+            )
+            _clear_chroma_persistence(db_path)
+            client = chromadb.PersistentClient(
+                path=str(db_path),
+                settings=chroma_settings,
+            )
 
-    collection = client.get_or_create_collection(collection_name)
+    try:
+        collection = client.get_or_create_collection(collection_name)
+    except Exception as exc:
+        if "_type" not in str(exc):
+            raise
+        print(
+            "[WARN] Detected incompatible Chroma collection metadata. "
+            "Resetting persistence directory and recreating collection."
+        )
+        _clear_chroma_persistence(db_path)
+        client = chromadb.PersistentClient(
+            path=str(db_path),
+            settings=chroma_settings,
+        )
+        collection = client.get_or_create_collection(collection_name)
     print(f"[INFO] Using collection: {collection_name}")
 
     existing_ids = [chunk["id"] for chunk in chunks]
@@ -402,7 +447,7 @@ def build_scam_vectorstore(
             except Exception as exc:
                 print(f"[ERROR] Failed to index chunk {chunk['id']}: {exc}")
 
-    print(f"✓ Indexed {len(chunks)} scam-defense chunks")
+    print(f"\n✓ Successfully indexed {len(chunks)} scam-defense chunks")
     print("\n" + "=" * 70)
     print("✅ Vector store build complete!")
     print("=" * 70)
@@ -442,6 +487,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--chunk-overlap", type=int, default=50, help="Chunk overlap for text splitting"
     )
     parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=DEFAULT_BATCH_SIZE,
+        help="Number of chunks to index per Chroma batch",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=0,
@@ -470,6 +521,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             include_csv=not args.skip_csv,
             chunk_size=args.chunk_size,
             chunk_overlap=args.chunk_overlap,
+            batch_size=args.batch_size,
             limit=args.limit,
             reset=args.reset,
         )
