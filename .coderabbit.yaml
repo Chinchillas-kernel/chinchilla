@@ -11,10 +11,10 @@ reviews:
       - dev
       - develop
       - master
-      - "feature/**"
-      - "fix/**"
-      - "test/**"
-      - "docs/**"
+      - "feature/.*"
+      - "fix/.*"
+      - "test/.*"
+      - "docs/.*"
   
   # 프로파일
   profile: chill
