@@ -51,23 +51,23 @@ class NewsRetriever:
 
     def __init__(
         self,
-        db_path: str = "data/chroma_news",
+        db_path: str | None = None,
         collection_name: str = "news",
         k: int = 5,
     ):
         """뉴스 리트리버 초기화.
 
         Args:
-            db_path: ChromaDB 영구 저장소 경로
+            db_path: ChromaDB 영구 저장소 경로 (None일 경우 settings.news_chroma_dir 사용)
             collection_name: 사용할 컬렉션 이름
             k: 검색할 문서 개수
         """
-        self.db_path = db_path
+        self.db_path = db_path or settings.news_chroma_dir
         self.collection_name = collection_name
         self.k = k
 
         # ChromaDB 클라이언트 및 컬렉션 초기화
-        self.client = chromadb.PersistentClient(path=db_path)
+        self.client = chromadb.PersistentClient(path=self.db_path)
         self.collection = self.client.get_collection(collection_name)
 
         # Upstage Embeddings 초기화
@@ -167,7 +167,7 @@ class NewsRetriever:
 
 def get_news_retriever(
     k: int = 5,
-    db_path: str = "data/chroma_news",
+    db_path: str | None = None,
     collection_name: str = "news",
 ) -> NewsRetriever:
     """뉴스 리트리버 인스턴스를 생성하는 팩토리 함수.
@@ -175,7 +175,7 @@ def get_news_retriever(
 
     Args:
         k: 검색할 문서 개수
-        db_path: ChromaDB 저장소 경로
+        db_path: ChromaDB 저장소 경로 (None일 경우 settings.news_chroma_dir 사용)
         collection_name: 컬렉션 이름
 
     Returns:
