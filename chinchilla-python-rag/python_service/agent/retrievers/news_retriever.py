@@ -51,17 +51,19 @@ class NewsRetriever:
 
     def __init__(
         self,
-        db_path: str = "data/chroma_news",
+        db_path: str = None,
         collection_name: str = "news",
         k: int = 5,
     ):
         """뉴스 리트리버 초기화.
 
         Args:
-            db_path: ChromaDB 영구 저장소 경로
+            db_path: ChromaDB 영구 저장소 경로 (None이면 settings.chroma_news_dir 사용)
             collection_name: 사용할 컬렉션 이름
             k: 검색할 문서 개수
         """
+        if db_path is None:
+            db_path = settings.chroma_news_dir
         self.db_path = db_path
         self.collection_name = collection_name
         self.k = k
@@ -167,7 +169,7 @@ class NewsRetriever:
 
 def get_news_retriever(
     k: int = 5,
-    db_path: str = "data/chroma_news",
+    db_path: str = None,
     collection_name: str = "news",
 ) -> NewsRetriever:
     """뉴스 리트리버 인스턴스를 생성하는 팩토리 함수.
@@ -175,7 +177,7 @@ def get_news_retriever(
 
     Args:
         k: 검색할 문서 개수
-        db_path: ChromaDB 저장소 경로
+        db_path: ChromaDB 저장소 경로 (None이면 settings.chroma_news_dir 사용)
         collection_name: 컬렉션 이름
 
     Returns:
@@ -186,6 +188,8 @@ def get_news_retriever(
         >>> result = retriever.invoke({"query": "노인 복지 정책"})
         >>> print(f"찾은 문서: {len(result.documents)}개")
     """
+    if db_path is None:
+        db_path = settings.chroma_news_dir
     return NewsRetriever(
         db_path=db_path,
         collection_name=collection_name,

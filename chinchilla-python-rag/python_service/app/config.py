@@ -61,6 +61,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    chroma_news_dir: str = Field(
+        default="data/chroma_news",
+        validation_alias=AliasChoices(
+            "CHROMA_NEWS_DIR",
+            "chroma_news_dir",
+        ),
+    )
+
     welfare_data_dir: str = Field(
         default="data/raw/welfare",
         validation_alias=AliasChoices(

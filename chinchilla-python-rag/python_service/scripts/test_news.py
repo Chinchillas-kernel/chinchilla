@@ -55,7 +55,7 @@ def test_news_full_workflow():
     req = NewsRequest(
         category="news",
         payload=NewsPayload(
-            query="최근 연금 뉴스 알려줘",
+            query="청양문화원 감성시낭송회",
             category="복지",
         ),
     )
