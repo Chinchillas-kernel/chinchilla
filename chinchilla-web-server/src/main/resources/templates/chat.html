@@ -229,8 +229,14 @@
             // 타이핑 인디케이터 숨기기
             hideTypingIndicator();
 
-            // 봇 응답 표시
-            addMessage(data.answer || '죄송합니다. 응답을 받을 수 없습니다.', 'bot');
+            // 봇 응답 표시 (마크다운 렌더링 지원)
+            const botHtml = data.answerHtml && data.answerHtml.trim();
+            const botText = data.answer && data.answer.trim();
+            if (botHtml) {
+                addMessage(botHtml, 'bot', true);
+            } else {
+                addMessage(botText || '죄송합니다. 응답을 받을 수 없습니다.', 'bot');
+            }
 
         } catch (error) {
             console.error('Error:', error);
@@ -243,7 +249,7 @@
     }
 
     // 메시지 추가 함수
-    function addMessage(content, sender) {
+    function addMessage(content, sender, isHtml = false) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
 
@@ -253,7 +259,11 @@
 
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
-        messageContent.textContent = content;
+        if (isHtml) {
+            messageContent.innerHTML = content;
+        } else {
+            messageContent.textContent = content;
+        }
 
         messageDiv.appendChild(avatar);
         messageDiv.appendChild(messageContent);
@@ -288,4 +298,3 @@
 </script>
 </body>
 </html>
-
