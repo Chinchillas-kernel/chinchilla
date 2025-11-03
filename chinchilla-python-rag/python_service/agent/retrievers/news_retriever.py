@@ -126,11 +126,16 @@ class NewsRetriever:
                 ),
                 results["distances"][0],
             ):
+                # None 값 필터링
+                if doc is None:
+                    continue
+
+                meta = meta or {}
                 meta["relevance_score"] = max(0.0, 1.0 - (distance / 2.0))
                 documents.append(
                     Document(
                         page_content=doc,
-                        metadata=meta or {},
+                        metadata=meta,
                     )
                 )
 
