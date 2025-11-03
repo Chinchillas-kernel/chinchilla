@@ -296,8 +296,8 @@ def collect_news_data(max_articles: Optional[int] = None):
     os.makedirs(os.path.join(raw_dir, "news"), exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    merged_file = os.path.join(raw_dir, "news_merged.json")
-    timestamped_file = os.path.join(raw_dir, f"news_{timestamp}.json")
+    merged_file = os.path.join(raw_dir, "news", "news_merged.json")
+    timestamped_file = os.path.join(raw_dir, "news", f"news_{timestamp}.json")
 
     # JSON 저장 (타임스탬프 버전 - 백업용)
     with open(timestamped_file, "w", encoding="utf-8") as f:
