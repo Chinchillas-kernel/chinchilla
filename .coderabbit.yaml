@@ -67,34 +67,4 @@ chat:
 
 early_access: false
 enable_free_tier: true
-```
 
----
-
-### 방법 3: GitHub에서 직접 확인
-
-**PR 페이지에서:**
-
-1. **"Details" 링크 클릭** (CodeRabbit 옆)
-2. **Skip 이유 확인**
-
-**예상 이유:**
-- ❌ Binary files (chroma.sqlite3)
-- ❌ No code changes
-- ❌ Draft PR
-- ❌ Branch filter
-
----
-
-## 🔧 지금 바로 할 일
-
-### 1단계: PR 코멘트로 강제 리뷰
-
-**PR 페이지에서 코멘트:**
-```
-@coderabbitai review
-```
-
-**또는 더 자세한 명령:**
-```
-@coderabbitai full review
