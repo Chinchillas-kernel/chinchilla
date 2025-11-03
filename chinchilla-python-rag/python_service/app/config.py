@@ -69,6 +69,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    news_chroma_dir: str = Field(
+        default="data/chroma_news",
+        validation_alias=AliasChoices(
+            "NEWS_CHROMA_DIR",
+            "news_chroma_dir",
+        ),
+    )
+
     data_raw_dir: str = Field(  # ← 누락돼 있던 필드
         default="data/raw",
         validation_alias=AliasChoices("DATA_RAW_DIR", "data_raw_dir"),

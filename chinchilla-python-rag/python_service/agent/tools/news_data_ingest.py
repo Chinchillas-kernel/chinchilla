@@ -323,7 +323,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     processed_dir = _ensure_dir(Path("data/processed"))
     news_texts_path = processed_dir / "news_texts.jsonl"
     embedded_chunks_path = processed_dir / "news_embedded_chunks.json"
-    db_dir = Path(args.db_dir) if args.db_dir else Path(settings.chroma_dir)
+    db_dir = Path(args.db_dir) if args.db_dir else Path(settings.news_chroma_dir)
     _ensure_dir(db_dir)
 
     print(f"[INFO] Loading news from {merged_json} ...")
