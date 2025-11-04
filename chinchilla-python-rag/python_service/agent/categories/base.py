@@ -54,7 +54,7 @@ def get_global_llm() -> SimpleLLM:
 
         _GLOBAL_LLM = SimpleLLM(
             api_key=settings.upstage_api_key,
-            model="solar-pro",
+            model="solar-1-mini-chat",
         )
     return _GLOBAL_LLM
 
