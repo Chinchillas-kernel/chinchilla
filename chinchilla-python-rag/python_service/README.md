@@ -135,6 +135,10 @@ curl -X POST http://localhost:8000/agent/query \
   "category": "jobs",
   "payload": {
     "query": "사용자 질문",
+    "history": [
+      {"role": "user", "content": "예전에 했던 질문"},
+      {"role": "assistant", "content": "그때 받은 답변"}
+    ],
     "profile": {
       "age": 65,
       "gender": "male",
@@ -143,6 +147,8 @@ curl -X POST http://localhost:8000/agent/query \
   }
 }
 ```
+
+`history` 필드는 선택 사항으로, 같은 세션에서 이어지는 질문/답변쌍을 오래된 순서대로 넣어주면 후속 질문도 맥락을 이어서 답변할 수 있습니다. 너무 긴 대화는 모델 입력을 압박하므로 최근 5~8턴 정도만 유지하는 것을 권장합니다.
 
 ### 응답 형식
 

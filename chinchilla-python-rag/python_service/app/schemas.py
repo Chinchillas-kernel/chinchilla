@@ -1,7 +1,28 @@
 """Pydantic schemas for agent requests using discriminated union pattern."""
 
-from typing import Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 from pydantic import BaseModel, Field
+
+
+# ============================================================================
+# Conversation History (공통)
+# ============================================================================
+
+
+class ConversationMessage(BaseModel):
+    """단일 대화 메시지 (역할 + 내용)."""
+
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ConversationHistoryMixin(BaseModel):
+    """대화 이력을 포함하는 믹스인."""
+
+    history: List[ConversationMessage] = Field(
+        default_factory=list,
+        description="이전 대화 메시지 목록 (오래된 순서)",
+    )
 
 
 # ============================================================================
@@ -17,7 +38,7 @@ class JobsProfile(BaseModel):
     location: Optional[str] = None
 
 
-class JobsPayload(BaseModel):
+class JobsPayload(ConversationHistoryMixin):
     """Payload for jobs queries."""
 
     query: str
@@ -53,7 +74,7 @@ class JobsRequest(BaseModel):
 # ============================================================================
 
 
-class NewsPayload(BaseModel):
+class NewsPayload(ConversationHistoryMixin):
     """Payload for news queries."""
 
     query: str  # 필수: 사용자 질문 (예: "노인 복지 정책 뉴스")
@@ -100,7 +121,7 @@ class LegalProfile(BaseModel):
     )
 
 
-class LegalPayload(BaseModel):
+class LegalPayload(ConversationHistoryMixin):
     """Payload for legal queries."""
 
     query: str = Field(
@@ -130,7 +151,7 @@ class LegalRequest(BaseModel):
 # ============================================================================
 
 
-class WelfarePayload(BaseModel):
+class WelfarePayload(ConversationHistoryMixin):
     """Payload for welfare category queries."""
 
     query: str = Field(..., description="상담을 원하는 내용")
@@ -156,7 +177,7 @@ class WelfareRequest(BaseModel):
 # ============================================================================
 
 
-class ScamDefensePayload(BaseModel):
+class ScamDefensePayload(ConversationHistoryMixin):
     """Payload for scam defense queries."""
 
     query: str = Field(
@@ -204,6 +225,8 @@ class AgentResponse(BaseModel):
 
 
 __all__ = [
+    "ConversationMessage",
+    "ConversationHistoryMixin",
     "JobsProfile",
     "JobsPayload",
     "JobsRequest",

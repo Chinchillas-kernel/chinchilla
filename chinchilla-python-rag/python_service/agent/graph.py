@@ -25,6 +25,7 @@ class AgentState(TypedDict, total=False):
     category: str
     query: str
     profile: Dict[str, Any]  # Optional, category-specific
+    history: list  # Conversation history (list of {role, content})
 
     # Workflow
     rewritten_query: str

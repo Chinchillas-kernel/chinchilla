@@ -63,13 +63,33 @@ def make_generate_node(hooks: Any) -> Callable:
             # Use cached LLM instance from hooks
             llm = hooks.llm
 
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": f"질문: {query}\n\n참고 문서:\n{context}\n\n답변:",
-                },
-            ]
+            messages = [{"role": "system", "content": system_prompt}]
+
+            history = state.get("history") or []
+            if history:
+                history_lines = []
+                for turn in history[-8:]:
+                    role = turn.get("role") if isinstance(turn, dict) else getattr(turn, "role", None)
+                    content = turn.get("content") if isinstance(turn, dict) else getattr(turn, "content", None)
+                    if not content:
+                        continue
+                    label = "사용자" if role == "user" else "상담사"
+                    history_lines.append(f"{label}: {content}")
+                if history_lines:
+                    messages.append(
+                        {
+                            "role": "system",
+                            "content": "이전 대화 이력:\n" + "\n".join(history_lines),
+                        }
+                    )
+
+            user_prompt = (
+                f"최신 사용자 질문: {query}\n\n"
+                f"참고 문서:\n{context}\n\n"
+                "지금까지의 문맥을 바탕으로 답변을 작성해줘."
+            )
+
+            messages.append({"role": "user", "content": user_prompt})
 
             response = llm.invoke(messages)
             answer = response.content.strip()

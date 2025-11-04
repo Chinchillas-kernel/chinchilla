@@ -33,10 +33,17 @@ def make_rewrite_node(hooks: Any) -> Callable:
             # Use cached LLM instance from hooks
             llm = hooks.llm
 
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"질문: {query}\n\n검색 쿼리:"},
-            ]
+            messages = [{"role": "system", "content": system_prompt}]
+
+            history = state.get("history") or []
+            # 최근 6턴까지만 포함하여 프롬프트 길이 제한
+            for turn in history[-6:]:
+                role = turn.get("role") if isinstance(turn, dict) else getattr(turn, "role", None)
+                content = turn.get("content") if isinstance(turn, dict) else getattr(turn, "content", None)
+                if role in {"user", "assistant"} and content:
+                    messages.append({"role": role, "content": str(content)})
+
+            messages.append({"role": "user", "content": f"질문: {query}\n\n검색 쿼리:"})
 
             response = llm.invoke(messages)
             rewritten = response.content.strip()
