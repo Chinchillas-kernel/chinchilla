@@ -1,4 +1,5 @@
 """Base class for category-specific hooks."""
+
 from abc import ABC, abstractmethod
 from typing import Any, Optional, List, Dict
 from pydantic import BaseModel
@@ -26,7 +27,9 @@ class SimpleLLM:
             "stream": False,
         }
 
-        response = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
+        response = requests.post(
+            self.api_url, json=payload, headers=headers, timeout=10
+        )
         response.raise_for_status()
 
         result = response.json()
@@ -48,6 +51,7 @@ def get_global_llm() -> SimpleLLM:
     global _GLOBAL_LLM
     if _GLOBAL_LLM is None:
         from app.config import settings
+
         _GLOBAL_LLM = SimpleLLM(
             api_key=settings.upstage_api_key,
             model="solar-pro",
@@ -68,13 +72,11 @@ class CategoryHooks(BaseModel, ABC):
 
     # Prompts (override in subclass)
     rewrite_system_prompt: str = (
-        "너는 검색 쿼리 최적화 전문가다. "
-        "사용자 질문을 검색에 적합하게 재작성하라."
+        "너는 검색 쿼리 최적화 전문가다. " "사용자 질문을 검색에 적합하게 재작성하라."
     )
 
     answer_system_prompt: str = (
-        "너는 전문 상담원이다. "
-        "제공된 문서를 바탕으로 정확하게 답변하라."
+        "너는 전문 상담원이다. " "제공된 문서를 바탕으로 정확하게 답변하라."
     )
 
     # Optional: category-specific scoring/filtering
