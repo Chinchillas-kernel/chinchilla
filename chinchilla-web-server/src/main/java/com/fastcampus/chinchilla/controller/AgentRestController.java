@@ -8,6 +8,7 @@ import com.fastcampus.chinchilla.dto.JobsProfile;
 import com.fastcampus.chinchilla.dto.LegalPayload;
 import com.fastcampus.chinchilla.dto.LegalProfile;
 import com.fastcampus.chinchilla.dto.NewsPayload;
+import com.fastcampus.chinchilla.dto.ScamDefensePayload;
 import com.fastcampus.chinchilla.dto.WelfarePayload;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -169,6 +170,12 @@ public class AgentRestController {
                     );
                 }
                 return new LegalPayload(query, legalProfile);
+
+            case "scam_defense":
+                return new ScamDefensePayload(
+                    query,
+                    asString(firstNonNull(source.get("sender"), source.get("phone"), source.get("contact")))
+                );
 
             default:
                 throw new IllegalArgumentException("Unsupported category: " + category);

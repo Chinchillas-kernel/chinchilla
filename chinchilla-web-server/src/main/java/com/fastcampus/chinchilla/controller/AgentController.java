@@ -16,7 +16,8 @@ public class AgentController {
             "health", // 건강 정보
             "welfare", // 복지 혜택
             "hobby", // 취미/여가
-            "education" // 교육/학습
+            "education", // 교육/학습
+            "scam_defense" // 금융 사기 탐지
         });
         return "main";
     }
@@ -32,6 +33,7 @@ public class AgentController {
             case "welfare" -> "복지 혜택";
             case "hobby" -> "취미/여가";
             case "education" -> "교육/학습";
+            case "scam_defense" -> "금융 사기 탐지";
             default -> "상담";
         };
         model.addAttribute("categoryTitle", categoryTitle);
