@@ -36,7 +36,7 @@ class LegalRetrieverPipeline:
     def __init__(
         self,
         *,
-        top_k: int = 5,
+        top_k: int = 3,
         fetch_k: int = 20,
         persist_directory: Optional[str] = None,
         collection_name: Optional[str] = None,
