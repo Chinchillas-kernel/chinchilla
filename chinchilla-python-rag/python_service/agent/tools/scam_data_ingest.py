@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a ChromaDB vector store for scam-defense content."""
+"""Build a ChromaDB vector store for scam-defense content (fast batch version)."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ import os
 import shutil
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
+
+from itertools import islice
 
 import chromadb
 from chromadb.config import Settings
@@ -27,7 +29,12 @@ except Exception as exc:  # pragma: no cover - configuration guard
 DEFAULT_DATA_DIR = Path("data/scam_defense")
 DEFAULT_DB_PATH = Path("data/chroma_scam_defense")
 DEFAULT_COLLECTION = "scam_defense"
-DEFAULT_BATCH_SIZE = 16
+DEFAULT_BATCH_SIZE = 64  # bigger default for throughput
+
+
+# ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
 
 
 def _clean_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
@@ -55,6 +62,11 @@ def _load_json(path: Path) -> Any:
     except Exception as e:
         print(f"[ERROR] Failed to read JSON file {path}: {e}")
         return None
+
+
+# ---------------------------------------------------------------------------
+# Collectors
+# ---------------------------------------------------------------------------
 
 
 def _collect_knowledge_base(path: Path) -> Iterable[Dict[str, Any]]:
@@ -173,6 +185,7 @@ def _collect_patterns(path: Path) -> Iterable[Dict[str, Any]]:
             }
         )
 
+    # keywords
     for risk_level, keywords in (payload.get("keywords") or {}).items():
         if not keywords:
             continue
@@ -192,6 +205,7 @@ def _collect_patterns(path: Path) -> Iterable[Dict[str, Any]]:
             }
         )
 
+    # legit contacts (fixed doc_id formatting)
     contact_index = 0
     for organization, phone in (payload.get("legitimate_contacts") or {}).items():
         if not organization and not phone:
@@ -199,7 +213,7 @@ def _collect_patterns(path: Path) -> Iterable[Dict[str, Any]]:
         if organization:
             doc_id = f"contact_{organization}"
         else:
-            doc_id = f"contact_{contact_index:idx:04d}"
+            doc_id = f"contact_{contact_index:04d}"
             contact_index += 1
 
         records.append(
@@ -283,27 +297,19 @@ def collect_scam_data(
     *,
     include_csv: bool = True,
 ) -> List[Dict[str, Any]]:
-    """Collect all scam defense data from the specified directory.
-
-    Args:
-        data_dir: Directory containing scam defense data files
-        include_csv: Whether to include CSV files in collection
-
-    Returns:
-        List of records with id, content, and metadata."""
-
+    """Collect all scam defense data from the specified directory."""
     print(f"\n Collecting scam-defense data from: {data_dir}")
     records: List[Dict[str, Any]] = []
 
-    # Collect from JSON files
+    # JSON sources
     kb_path = data_dir / "scam_knowledge_base.json"
     records.extend(_collect_knowledge_base(kb_path))
 
     patterns_path = data_dir / "scam_patterns.json"
     records.extend(_collect_patterns(patterns_path))
 
+    # CSVs
     if include_csv:
-
         csv_files = sorted(data_dir.glob("*.csv"))
         if csv_files:
             print(f"[INFO] Found {len(csv_files)} CSV file(s)")
@@ -316,15 +322,30 @@ def collect_scam_data(
     return records
 
 
+# ---------------------------------------------------------------------------
+# Builder
+# ---------------------------------------------------------------------------
+
+
+def batched(seq, n: int):
+    """Yield lists of length <= n from seq."""
+    it = iter(seq)
+    while True:
+        group = list(islice(it, n))
+        if not group:
+            return
+        yield group
+
+
 def build_scam_vectorstore(
     *,
     data_dir: Path = DEFAULT_DATA_DIR,
     db_path: Path = DEFAULT_DB_PATH,
     collection_name: str = DEFAULT_COLLECTION,
     include_csv: bool = True,
-    chunk_size: int = 500,
-    chunk_overlap: int = 50,
-    batch_size: int = DEFAULT_BATCH_SIZE,
+    chunk_size: int = 1000,  # larger chunks to reduce count
+    chunk_overlap: int = 20,  # smaller overlap
+    batch_size: int = DEFAULT_BATCH_SIZE,  # DB upsert batch
     limit: int = 0,
     reset: bool = False,
 ) -> None:
@@ -334,7 +355,7 @@ def build_scam_vectorstore(
         raise FileNotFoundError(f"Scam-defense data directory not found: {data_dir}")
 
     print("\n" + "=" * 70)
-    print("📚 Scam Defense Vectorstore Builder")
+    print("📚 Scam Defense Vectorstore Builder (Fast)")
     print(f"- data_dir   : {data_dir}")
     print(f"- db_path    : {db_path}")
     print(f"- collection : {collection_name}")
@@ -362,6 +383,7 @@ def build_scam_vectorstore(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
     )
+
     chunks: List[Dict[str, Any]] = []
     for record in raw_records:
         pieces = splitter.split_text(record["content"]) or [record["content"]]
@@ -397,7 +419,7 @@ def build_scam_vectorstore(
             print(f"[INFO] Deleted existing collection: {collection_name}")
         except Exception as exc:
             print(
-                f"[WARN] Unable to delete collection via Chroma API ({exc}). "
+                f"[WARN] Unable to delete via Chroma API ({exc}). "
                 "Clearing persistence directory instead."
             )
             _clear_chroma_persistence(db_path)
@@ -406,13 +428,14 @@ def build_scam_vectorstore(
                 settings=chroma_settings,
             )
 
+    # (re)create / get collection
     try:
         collection = client.get_or_create_collection(collection_name)
     except Exception as exc:
         if "_type" not in str(exc):
             raise
         print(
-            "[WARN] Detected incompatible Chroma collection metadata. "
+            "[WARN] Incompatible Chroma collection metadata. "
             "Resetting persistence directory and recreating collection."
         )
         _clear_chroma_persistence(db_path)
@@ -423,44 +446,78 @@ def build_scam_vectorstore(
         collection = client.get_or_create_collection(collection_name)
     print(f"[INFO] Using collection: {collection_name}")
 
-    existing_ids = [chunk["id"] for chunk in chunks]
-    try:
-        collection.delete(ids=existing_ids)
-    except Exception:
-        pass
+    # ---- Fast path: batch-embed and batch-upsert ----
+    # Separate "embed batch size" from "DB upsert batch size" to hit API sweet spot.
+    embed_batch_size = max(32, min(batch_size * 4, 256))
 
-    for i in range(0, len(chunks), batch_size):
-        batch = chunks[i : i + batch_size]
-        batch_num = i // batch_size + 1
-        total_batches = (len(chunks) + batch_size - 1) // batch_size
-        print(f"[INFO] Indexing batch {batch_num}/{total_batches}...", end="\r")
+    total = len(chunks)
+    processed = 0
 
-        for chunk in batch:
+    for batch in batched(chunks, embed_batch_size):
+        ids = [c["id"] for c in batch]
+        docs = [c["content"] for c in batch]
+        metas = [c["metadata"] for c in batch]
+
+        try:
+            # Single API call for many docs (critical speed-up)
+            vectors = embeddings.embed_documents(docs)
+        except Exception as exc:
+            print(f"[ERROR] embed_documents failed ({len(docs)} items): {exc}")
+            # Fallback: try one-by-one just for this batch
+            vectors = []
+            for doc in docs:
+                try:
+                    vectors.append(embeddings.embed_query(doc))
+                except Exception as e2:
+                    print(f"[ERROR] Single embed failed: {e2}")
+                    vectors.append(None)
+
+        # Split into smaller upserts if desired (use DB batch_size)
+        for sub in batched(list(zip(ids, docs, metas, vectors)), batch_size):
+            sub_ids, sub_docs, sub_metas, sub_vecs = zip(*sub)
+            # Filter out failed vectors
+            ok_ids, ok_docs, ok_metas, ok_vecs = [], [], [], []
+            for _i, _d, _m, _v in zip(sub_ids, sub_docs, sub_metas, sub_vecs):
+                if _v is None:
+                    continue
+                ok_ids.append(_i)
+                ok_docs.append(_d)
+                ok_metas.append(_m)
+                ok_vecs.append(_v)
+            if not ok_ids:
+                continue
+
             try:
-                embedding = embeddings.embed_query(chunk["content"])
-                collection.add(
-                    ids=[chunk["id"]],
-                    embeddings=[embedding],
-                    documents=[chunk["content"]],
-                    metadatas=[chunk["metadata"]],
+                # upsert overwrites if IDs exist; no need to delete first
+                collection.upsert(
+                    ids=list(ok_ids),
+                    embeddings=list(ok_vecs),
+                    documents=list(ok_docs),
+                    metadatas=list(ok_metas),
                 )
             except Exception as exc:
-                print(f"[ERROR] Failed to index chunk {chunk['id']}: {exc}")
+                print(f"[ERROR] upsert failed ({len(ok_ids)} items): {exc}")
 
-    print(f"\n✓ Successfully indexed {len(chunks)} scam-defense chunks")
+            processed += len(ok_ids)
+            print(
+                f"[INFO] Progress: {processed}/{total} ({processed*100//total}%)",
+                end="\r",
+            )
+
+    print(f"\n✓ Successfully indexed {processed} scam-defense chunks")
     print("\n" + "=" * 70)
     print("✅ Vector store build complete!")
     print("=" * 70)
 
 
-# ============================================================================
-# CLI Interface
-# ============================================================================
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Build scam-defense Chroma vector store."
+        description="Build scam-defense Chroma vector store (fast batch version)."
     )
     parser.add_argument(
         "--data-dir",
@@ -481,16 +538,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Chroma collection name",
     )
     parser.add_argument(
-        "--chunk-size", type=int, default=500, help="Chunk size for text splitting"
+        "--chunk-size", type=int, default=1000, help="Chunk size for text splitting"
     )
     parser.add_argument(
-        "--chunk-overlap", type=int, default=50, help="Chunk overlap for text splitting"
+        "--chunk-overlap", type=int, default=20, help="Chunk overlap for text splitting"
     )
     parser.add_argument(
         "--batch-size",
         type=int,
         default=DEFAULT_BATCH_SIZE,
-        help="Number of chunks to index per Chroma batch",
+        help="Number of items per DB upsert",
     )
     parser.add_argument(
         "--limit",
