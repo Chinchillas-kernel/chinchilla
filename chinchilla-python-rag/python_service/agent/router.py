@@ -41,6 +41,16 @@ def dispatch(
         "filter_level": 0,  # Initialize filter level
     }
 
+    history = getattr(req.payload, "history", None)
+    if history:
+        if isinstance(history, list):
+            state["history"] = [
+                message.model_dump() if hasattr(message, "model_dump") else dict(message)
+                for message in history
+                if getattr(message, "content", None) or (isinstance(message, dict) and message.get("content"))
+            ]
+
+
     # Add profile if exists (for jobs category)
 
     profile = getattr(req.payload, "profile", None)
