@@ -70,8 +70,16 @@ def make_generate_node(hooks: Any) -> Callable:
             if history:
                 history_lines = []
                 for turn in history[-8:]:
-                    role = turn.get("role") if isinstance(turn, dict) else getattr(turn, "role", None)
-                    content = turn.get("content") if isinstance(turn, dict) else getattr(turn, "content", None)
+                    role = (
+                        turn.get("role")
+                        if isinstance(turn, dict)
+                        else getattr(turn, "role", None)
+                    )
+                    content = (
+                        turn.get("content")
+                        if isinstance(turn, dict)
+                        else getattr(turn, "content", None)
+                    )
                     if not content:
                         continue
                     label = "사용자" if role == "user" else "상담사"
@@ -100,19 +108,21 @@ def make_generate_node(hooks: Any) -> Callable:
                 (doc.metadata.get("origin") or "vector_db") for doc in all_docs
             )
 
-            summary_lines = []
-            if origin_counts:
-                vector_count = origin_counts.get("vector_db")
-                web_count = origin_counts.get("web_search")
-                if vector_count:
-                    summary_lines.append(f"벡터 DB 문서 {vector_count}건")
-                if web_count:
-                    summary_lines.append(f"웹 검색 문서 {web_count}건")
-            if not summary_lines:
-                summary_lines.append("참고 문서를 찾지 못했습니다")
+            # summary_lines = []
+            # if origin_counts:
+            #     vector_count = origin_counts.get("vector_db")
+            #     web_count = origin_counts.get("web_search")
+            #     if vector_count:
+            #         summary_lines.append(f"벡터 DB 문서 {vector_count}건")
+            #     if web_count:
+            #         summary_lines.append(f"웹 검색 문서 {web_count}건")
+            # if not summary_lines:
+            #     summary_lines.append("참고 문서를 찾지 못했습니다")
 
-            summary_block = "\n".join(f"- {line}" for line in summary_lines)
-            answer_with_summary = f"{answer}\n\n---\n**출처 요약**\n{summary_block}"
+            # summary_block = "\n".join(f"- {line}" for line in summary_lines)
+            # answer_with_summary = f"{answer}\n\n---\n**출처 요약**\n{summary_block}"
+
+            answer_with_summary = f"{answer}"
 
             # Extract sources
             sources = [

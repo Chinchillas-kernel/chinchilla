@@ -45,11 +45,15 @@ def dispatch(
     if history:
         if isinstance(history, list):
             state["history"] = [
-                message.model_dump() if hasattr(message, "model_dump") else dict(message)
+                (
+                    message.model_dump()
+                    if hasattr(message, "model_dump")
+                    else dict(message)
+                )
                 for message in history
-                if getattr(message, "content", None) or (isinstance(message, dict) and message.get("content"))
+                if getattr(message, "content", None)
+                or (isinstance(message, dict) and message.get("content"))
             ]
-
 
     # Add profile if exists (for jobs category)
 

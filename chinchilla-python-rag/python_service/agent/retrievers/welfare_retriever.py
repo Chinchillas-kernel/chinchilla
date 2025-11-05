@@ -27,7 +27,7 @@ class WelfareRetrieverPipeline:
     def __init__(
         self,
         *,
-        top_k: int = 5,
+        top_k: int = 3,
         search_type: str = "mmr",
         search_kwargs: Optional[Dict[str, Any]] = None,
         persist_directory: Optional[str] = None,
@@ -100,9 +100,13 @@ class WelfareRetrieverPipeline:
             results: List[Document] = []
             for doc, score in fallback:
                 metadata = dict(doc.metadata or {})
-                metadata.setdefault("doc_id", metadata.get("id") or metadata.get("uuid"))
+                metadata.setdefault(
+                    "doc_id", metadata.get("id") or metadata.get("uuid")
+                )
                 metadata["relevance_score"] = float(score)
-                results.append(Document(page_content=doc.page_content, metadata=metadata))
+                results.append(
+                    Document(page_content=doc.page_content, metadata=metadata)
+                )
             return results
 
         ids = raw.get("ids", [[]])[0] or []
@@ -111,7 +115,9 @@ class WelfareRetrieverPipeline:
         distances = raw.get("distances", [[]])[0] or []
 
         results: List[Document] = []
-        for doc_id, text, metadata, distance in zip(ids, documents, metadatas, distances):
+        for doc_id, text, metadata, distance in zip(
+            ids, documents, metadatas, distances
+        ):
             metadata = dict(metadata or {})
             metadata.setdefault("chunk_id", doc_id)
             metadata.setdefault("record_id", metadata.get("doc_id"))

@@ -248,14 +248,20 @@ def _clear_chroma_persistence(db_path: Path) -> None:
 
 
 def _collect_csv(path: Path) -> Iterable[Dict[str, Any]]:
-    """Collect data from CSV files."""
+    """Collect data from CSV files, trying multiple encodings."""
     if not path.exists():
         return []
 
-    records: List[Dict[str, Any]] = []
-    try:
-        with path.open("r", encoding="utf-8") as handle:
-            reader = csv.DictReader(handle)
+    encodings_to_try = ['utf-8', 'cp949', 'euc-kr']
+    for encoding in encodings_to_try:
+        try:
+            with path.open("r", encoding=encoding, newline="") as handle:
+                # Read the whole file to ensure it decodes correctly
+                content = handle.read()
+            
+            # If successful, process the content
+            records: List[Dict[str, Any]] = []
+            reader = csv.DictReader(content.splitlines())
             for index, row in enumerate(reader):
                 lines: List[str] = []
                 metadata: Dict[str, Any] = {
@@ -286,10 +292,16 @@ def _collect_csv(path: Path) -> Iterable[Dict[str, Any]]:
                         ),
                     }
                 )
-    except Exception as exc:  # pragma: no cover - defensive logging
-        print(f"[WARN] Failed to parse CSV {path}: {exc}")
+            # If parsing is successful, return the records
+            print(f"[INFO] Successfully parsed CSV {path} with encoding '{encoding}'")
+            return records
+        except (UnicodeDecodeError, csv.Error):
+            # Try the next encoding
+            continue
 
-    return records
+    # If all encodings fail
+    print(f"[WARN] Failed to parse CSV {path} with any of the tried encodings.")
+    return []
 
 
 def collect_scam_data(
