@@ -59,8 +59,8 @@ def build_graph(hooks: CategoryHooks) -> Any:
     Enhanced flow:
     1. rewrite → enhanced_retrieve → grade
     2. If grade="no":
-       a. If filter_level < 3: widen_filter → retrieve
-       b. Else if retry_count < 2: increment_retry → rewrite
+       a. If filter_level < 2: widen_filter → retrieve
+       b. Else if retry_count < 1: increment_retry → rewrite
        c. Else: fallback_answer → END
     3. If grade="yes": generate
 
@@ -124,8 +124,8 @@ def build_graph(hooks: CategoryHooks) -> Any:
         Strategy:
         1. If documents are relevant (grade=yes) → generate
         2. If not relevant (grade=no):
-           a. Try filter widening (if filter_level < 3)
-           b. Try query rewrite (if retry_count < 2)
+           a. Try filter widening (if filter_level < 2)
+           b. Try query rewrite (if retry_count < 1)
            c. Provide fallback message
         """
         grade_decision = state.get("grade_decision", "no")
@@ -144,12 +144,12 @@ def build_graph(hooks: CategoryHooks) -> Any:
         )
 
         # Strategy 1: Widen filters (if not exhausted)
-        if filter_level < 3:
+        if filter_level < 2:
             print(f"[ROUTE] → widen_filter (current level: {filter_level})")
             return "widen_filter"
 
         # Strategy 2: Rewrite query (if retries available)
-        if retry_count < 2:
+        if retry_count < 1:
             print(f"[ROUTE] → increment_retry (attempt {retry_count + 1}/2)")
             return "increment_retry"
 

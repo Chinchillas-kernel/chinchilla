@@ -1,4 +1,5 @@
 """Generate node: final answer generation using LLM."""
+
 from collections import Counter
 from typing import Callable, Dict, Any, List
 from langchain.schema import Document
@@ -111,9 +112,7 @@ def make_generate_node(hooks: Any) -> Callable:
                 summary_lines.append("참고 문서를 찾지 못했습니다")
 
             summary_block = "\n".join(f"- {line}" for line in summary_lines)
-            answer_with_summary = (
-                f"{answer}\n\n---\n**출처 요약**\n{summary_block}"
-            )
+            answer_with_summary = f"{answer}\n\n---\n**출처 요약**\n{summary_block}"
 
             # Extract sources
             sources = [
