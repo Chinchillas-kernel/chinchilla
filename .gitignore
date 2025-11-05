@@ -1,0 +1,14 @@
+# macOS metadata
+.DS_Store
+
+# Frontend build artifacts
+/chinchilla-front-server/node_modules/
+/chinchilla-front-server/dist/
+/chinchilla-front-server/*.log
+/chinchilla-front-server/.vite/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Python cache
+**/__pycache__/
