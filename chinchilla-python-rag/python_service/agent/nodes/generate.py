@@ -66,31 +66,31 @@ def make_generate_node(hooks: Any) -> Callable:
 
             messages = [{"role": "system", "content": system_prompt}]
 
-            history = state.get("history") or []
-            if history:
-                history_lines = []
-                for turn in history[-8:]:
-                    role = (
-                        turn.get("role")
-                        if isinstance(turn, dict)
-                        else getattr(turn, "role", None)
-                    )
-                    content = (
-                        turn.get("content")
-                        if isinstance(turn, dict)
-                        else getattr(turn, "content", None)
-                    )
-                    if not content:
-                        continue
-                    label = "사용자" if role == "user" else "상담사"
-                    history_lines.append(f"{label}: {content}")
-                if history_lines:
-                    messages.append(
-                        {
-                            "role": "system",
-                            "content": "이전 대화 이력:\n" + "\n".join(history_lines),
-                        }
-                    )
+            # history = state.get("history") or []
+            # if history:
+            #     history_lines = []
+            #     for turn in history[-8:]:
+            #         role = (
+            #             turn.get("role")
+            #             if isinstance(turn, dict)
+            #             else getattr(turn, "role", None)
+            #         )
+            #         content = (
+            #             turn.get("content")
+            #             if isinstance(turn, dict)
+            #             else getattr(turn, "content", None)
+            #         )
+            #         if not content:
+            #             continue
+            #         label = "사용자" if role == "user" else "상담사"
+            #         history_lines.append(f"{label}: {content}")
+            #     if history_lines:
+            #         messages.append(
+            #             {
+            #                 "role": "system",
+            #                 "content": "이전 대화 이력:\n" + "\n".join(history_lines),
+            #             }
+            #         )
 
             user_prompt = (
                 f"최신 사용자 질문: {query}\n\n"
