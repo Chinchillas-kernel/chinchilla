@@ -60,9 +60,6 @@ npm run preview
 
 프론트는 `/agent/query` 엔드포인트로 POST 요청을 보내 카테고리별 에이전트와 통신합니다. 필요한 경우 카테고리·프로필·히스토리 구조가 `src/lib/api.ts`에 정의되어 있으니, API 변경 시 해당 파일을 수정해주세요.
 
-## 린트 경고
-
-shadcn-ui 기본 템플릿에서 가져온 일부 UI 파일은 React Fast Refresh 경고(`react-refresh/only-export-components`)가 있을 수 있습니다. 기능상 문제는 없지만, 필요하면 컴포넌트를 별도 파일로 분리하거나 ESLint 설정을 조정해 경고를 제거할 수 있습니다.
 
 ## 배포 참고
 
@@ -75,7 +72,4 @@ shadcn-ui 기본 템플릿에서 가져온 일부 UI 파일은 React Fast Refres
 1. 새로운 기능이나 버그 수정을 위해 브랜치를 생성합니다.
 2. `npm run lint`와 `npm run build`로 기본 체크를 통과한 뒤 커밋합니다.
 3. Pull Request 생성 시 변경 요약과 테스트 결과를 함께 남겨주세요.
-
----
-
-문의/건의 사항은 백엔드 저장소(`chinchilla-python-rag`) 또는 프로젝트 이슈 트래커를 통해 공유해 주세요.
+세요.
