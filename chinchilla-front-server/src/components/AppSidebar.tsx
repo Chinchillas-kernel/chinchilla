@@ -1,4 +1,4 @@
-import { Briefcase, Newspaper, Users, ShieldAlert, Home, Settings, User, Scale } from "lucide-react";
+import { Briefcase, Newspaper, Users, ShieldAlert, Home, Scale } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -30,13 +30,15 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b px-4 py-3">
         <NavLink to="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
             <Home className="h-6 w-6 text-primary-foreground" />
           </div>
           {!isCollapsed && (
-            <div className="flex flex-col">
-              <span className="text-2xl font-semibold text-sidebar-foreground">복지팡이</span>
-            </div>
+            <img
+              src="/logo.png"
+              alt="복지팡이 로고"
+              className="h-14 w-auto object-contain"
+            />
           )}
         </NavLink>
       </SidebarHeader>
@@ -70,22 +72,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-2">
-        <SidebarMenu className="gap-2">
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="설정" className="gap-3 py-3 text-lg [&_svg]:h-5 [&_svg]:w-5">
-              <Settings className="h-5 w-5" />
-              <span>설정</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="사용자" className="gap-3 py-3 text-lg [&_svg]:h-5 [&_svg]:w-5">
-              <User className="h-5 w-5" />
-              <span>사용자</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      <SidebarFooter className="border-t p-2" />
     </Sidebar>
   );
 }
