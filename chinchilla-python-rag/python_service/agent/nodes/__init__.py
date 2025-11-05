@@ -1,4 +1,5 @@
 """Common agent nodes - factory pattern with hooks injection."""
+
 from agent.nodes.precheck import make_precheck_node
 from agent.nodes.rewrite import make_rewrite_node
 from agent.nodes.retrieve import make_retrieve_node

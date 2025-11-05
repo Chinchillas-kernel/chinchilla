@@ -1,4 +1,5 @@
 """Jobs category hooks."""
+
 from typing import Any
 from agent.categories.base import CategoryHooks
 from agent.retrievers.jobs_retriever import get_jobs_retriever

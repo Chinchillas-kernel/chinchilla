@@ -25,7 +25,7 @@ class WelfareHooks(CategoryHooks):
         "항목별로 정리하고 필요한 경우 주의사항·비고를 덧붙여라."
     )
 
-    top_k: int = 6
+    top_k: int = 3
     min_relevance_threshold: float = 0.25
 
     def get_retriever(self) -> Any:  # pragma: no cover - simple factory
