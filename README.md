@@ -112,7 +112,6 @@ python -m pytest tests
 
 ## 참고 문서
 - `python_service/README.md` – 세부 사용 설명서 및 API 예시
-- `python_service/claudedocs/ARCHITECTURE.md` – 아키텍처 심화 설명
 - `python_service/claudedocs/TEAM_GUIDE.md` – 카테고리 추가 절차
 - `python_service/policies/` – 답변 템플릿과 정책 정의 YAML
 
@@ -122,6 +121,4 @@ python -m pytest tests
 3. `scripts/test_<category>.py` 또는 `tests/`에 검증 코드를 작성합니다.
 4. `policies/`에 답변 템플릿을 정의하고 팀 가이드 문서 업데이트를 권장합니다.
 
-## 라이선스
 
-이 프로젝트는 MIT License를 따릅니다.
