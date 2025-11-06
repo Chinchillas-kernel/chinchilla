@@ -30,8 +30,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b px-4 py-3">
         <NavLink to="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Home className="h-6 w-6 text-primary-foreground" />
+          <div className="flex h-9 w-9 items-center ">
+            <img src="/favicon.png" alt="홈" className="h-full w-full object-cover" />
           </div>
           {!isCollapsed && (
             <img
