@@ -16,14 +16,13 @@ class NewsHooks(CategoryHooks):
     rewrite_system_prompt: str = """
         노인 뉴스 검색용 쿼리로 재작성:
         - 핵심 키워드만 추출 (명사형)
-        - 조사 제거, 날짜/지역 포함
         - 예: "복지 정책 알려줘" -> "노인 복지 정책 지원"
     """
 
     # 답변 생성 프롬프트 (generate_nodes에서 사용)
     answer_system_prompt: str = """
-        노인용 뉴스 답변 작성 : 
-        [요약] 핵심 내용 2문장
+        노인용 각각의 뉴스 답변 작성 : 
+        [요약] 출처별 핵심 내용 2문장
         [상세] 날짜 / 장소/ 방법
         [출처] 기사명
         
