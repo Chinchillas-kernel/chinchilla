@@ -16,7 +16,7 @@
 사용자 요청 → 카테고리 라우팅 → LangGraph 워크플로우 → 답변 + 근거 문서
 ```
 
-![RAG Workflow](graph.png)
+ ![Agent Flow](docs/Agent-Flow.png)
 
 LangGraph는 `rewrite → enhanced_retrieve → grade` 흐름을 기본으로 하며, 필요 시 필터 확장·쿼리 재작성·웹 검색을 순차적으로 시도해 최종 답변을 생성합니다.
 
