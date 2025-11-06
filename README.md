@@ -115,10 +115,4 @@ python -m pytest tests
 - `python_service/claudedocs/TEAM_GUIDE.md` – 카테고리 추가 절차
 - `python_service/policies/` – 답변 템플릿과 정책 정의 YAML
 
-## 기여 가이드
-1. 새 카테고리를 추가할 경우 `agent/categories`, `agent/retrievers`, `app/schemas.py`, `agent/router_runtime.py`에 후크를 등록합니다.
-2. 관련 데이터 ETL 스크립트를 `agent/tools/`에 추가하고 `data/` 경로 구조를 맞춥니다.
-3. `scripts/test_<category>.py` 또는 `tests/`에 검증 코드를 작성합니다.
-4. `policies/`에 답변 템플릿을 정의하고 팀 가이드 문서 업데이트를 권장합니다.
-
 
