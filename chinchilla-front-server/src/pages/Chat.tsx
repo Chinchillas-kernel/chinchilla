@@ -361,9 +361,35 @@ const Chat = () => {
                       <p className="font-semibold">참고 자료</p>
                       <ul className="list-disc space-y-1 pl-4">
                         {message.sources.map((source, index) => {
-                          const title = typeof source.title === "string" ? source.title : undefined;
-                          const url = typeof source.url === "string" ? source.url : undefined;
-                          const label = title || url || `자료 ${index + 1}`;
+                          const metadata =
+                            source && typeof source === "object" && "metadata" in source &&
+                            source.metadata && typeof source.metadata === "object"
+                              ? (source.metadata as Record<string, unknown>)
+                              : {};
+                          const title = typeof metadata.title === "string" ? metadata.title : undefined;
+                          const urlKeys = ["url", "link", "href", "source_url"] as const;
+                          const url = urlKeys.reduce<string | undefined>((acc, key) => {
+                            if (acc) return acc;
+                            const value = metadata[key];
+                            return typeof value === "string" ? value : undefined;
+                          }, undefined);
+                          const sourceName = typeof metadata.source === "string" ? metadata.source : undefined;
+                          const label = title || sourceName || url || `자료 ${index + 1}`;
+                          const dangerLevelRaw = metadata.danger_level;
+                          const dangerLevel =
+                            typeof dangerLevelRaw === "string"
+                              ? dangerLevelRaw
+                              : typeof dangerLevelRaw === "number"
+                                ? String(dangerLevelRaw)
+                                : undefined;
+                          const extraInfo: string[] = [];
+                          if (dangerLevel) {
+                            extraInfo.push(`위험도: ${dangerLevel}`);
+                          }
+                          if (sourceName && sourceName !== label) {
+                            extraInfo.push(sourceName);
+                          }
+                          const snippet = typeof source.content === "string" ? source.content.trim() : undefined;
                           return (
                             <li key={url || `${label}-${index}`} className="break-words">
                               {url ? (
@@ -377,6 +403,16 @@ const Chat = () => {
                                 </a>
                               ) : (
                                 <span>{label}</span>
+                              )}
+                              {extraInfo.length > 0 && (
+                                <span className="ml-2 text-muted-foreground">
+                                  {extraInfo.join(" · ")}
+                                </span>
+                              )}
+                              {snippet && (
+                                <p className="mt-1 text-muted-foreground">
+                                  {snippet.length > 160 ? `${snippet.slice(0, 160)}…` : snippet}
+                                </p>
                               )}
                             </li>
                           );
