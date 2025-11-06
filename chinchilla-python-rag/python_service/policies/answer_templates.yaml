@@ -8,6 +8,8 @@ welfare:
     문의 내용: {query}
 
     {answer}
+
+    참고자료(최대 3개): {sources}
 fraud:
   template: "{answer}"
 news:
