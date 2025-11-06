@@ -212,8 +212,12 @@ const Chat = () => {
     };
 
     const historyPayload = buildHistoryPayload();
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.value = "";
+      textareaRef.current.dispatchEvent(new Event("input", { bubbles: true }));
+    }
     setIsLoading(true);
 
     try {
