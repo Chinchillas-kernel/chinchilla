@@ -76,6 +76,7 @@ const Chat = () => {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -191,6 +192,7 @@ const Chat = () => {
   };
 
   const handleSend = async () => {
+    if (isComposing) return;
     if (!input.trim() || isLoading) return;
     if (!category) return;
 
@@ -250,6 +252,7 @@ const Chat = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isComposing) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -449,6 +452,8 @@ const Chat = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
               placeholder="메시지를 입력하세요..."
               className="min-h-[52px] max-h-32 resize-none rounded-xl border-border bg-muted/50"
               rows={1}
